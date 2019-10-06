@@ -26,9 +26,29 @@ public abstract class NetworkLogAggregations {
   @Nullable
   public abstract Long numberOfUniqueIPs();
 
+  @Nullable
+  public abstract Long numberOfUniquePorts();
+
+  @Nullable
+  public abstract Double avgTxBytes();
+
+  @Nullable
+  public abstract Long minTxBytes();
+
+  @Nullable
+  public abstract Long maxTxBytes();
+
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setNumberOfUniqueIPs(Long value);
+
+    public abstract Builder setNumberOfUniquePorts(Long value);
+
+    public abstract Builder setAvgTxBytes(Double value);
+
+    public abstract Builder setMinTxBytes(Long value);
+
+    public abstract Builder setMaxTxBytes(Long value);
 
     public abstract NetworkLogAggregations build();
   }

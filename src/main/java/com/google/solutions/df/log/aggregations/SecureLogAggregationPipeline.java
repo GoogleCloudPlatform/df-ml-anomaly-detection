@@ -16,6 +16,7 @@
 
 package com.google.solutions.df.log.aggregations;
 
+import com.google.solutions.df.log.aggregations.common.AvgFn;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -23,7 +24,12 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.Group;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
+import org.apache.beam.sdk.transforms.Max;
+import org.apache.beam.sdk.transforms.Min;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -51,8 +57,17 @@ public class SecureLogAggregationPipeline {
           .addStringField("protocolName")
           .addInt64Field("protocolNumber")
           .build();
+  public static final Schema networkLogAggregationSchema =
+      Schema.builder()
+          .addInt64Field("numberOfUniqueIPs")
+          .addInt64Field("numberOfUniquePorts")
+          .addDoubleField("avgTxBytes")
+          .addInt64Field("minTxBytes")
+          .addInt64Field("maxTxBytes")
+          .build();
 
   public static void main(String args[]) {
+
     SecureLogAggregationPipelineOptions options =
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
@@ -61,9 +76,10 @@ public class SecureLogAggregationPipeline {
   }
 
   public static PipelineResult run(SecureLogAggregationPipelineOptions options) {
+
     Pipeline p = Pipeline.create(options);
 
-    PCollection<KV<Row, Iterable<Row>>> logData =
+    PCollection<KV<Row, Row>> logData =
         p.apply(PubsubIO.readStrings().fromSubscription(options.getSubscriberId()))
             .apply(JsonToRow.withSchema(networkLogSchema))
             .setRowSchema(networkLogSchema)
@@ -75,7 +91,25 @@ public class SecureLogAggregationPipeline {
                         AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
-            .apply("Group By Sub Id & DestIP", Group.byFieldNames("subcriberId", "destIp"));
+            .apply(
+                "Group By Sub Id & DestIP",
+                Group.<Row>byFieldNames("subscriberId", "dstIP")
+                    .aggregateField("srcIP", Count.combineFn(), "numberOfUniqueIPs")
+                    .aggregateField("srcPort", Count.combineFn(), "numberOfUniquePorts")
+                    .aggregateField("txBytes", new AvgFn(), "avgTxByes")
+                    .aggregateField("txBytes", Max.ofLongs(), "maxTxByes")
+                    .aggregateField("txBytes", Min.ofLongs(), "minTxByes"));
+
+    logData.apply(
+        "Print",
+        ParDo.of(
+            new DoFn<KV<Row, Row>, String>() {
+              @ProcessElement
+              public void processElement(ProcessContext c) {
+                Row row = c.element().getValue();
+                LOG.info("row value {}", row.toString());
+              }
+            }));
 
     return p.run();
   }
