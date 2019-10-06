@@ -1,0 +1,5 @@
+{
+  "docker_template_spec": {
+    "docker_image": "gcr.io/[PROJECT_ID]/df-vision-api-pipeline"
+  }
+}

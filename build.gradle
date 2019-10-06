@@ -1,0 +1,132 @@
+/*
+ * Copyright 2019 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+buildscript {
+    ext {
+        dataflowBeamVersion = '2.15.0'
+        visionApiVersion = '1.87.0'
+        
+    }
+    repositories {
+        mavenCentral()
+        jcenter()
+        maven {
+     		 url "https://plugins.gradle.org/m2/"
+    	}
+    	dependencies {
+        	classpath "net.ltgt.gradle:gradle-apt-plugin:0.19"
+        	classpath "gradle.plugin.com.google.cloud.tools:jib-gradle-plugin:1.4.0"
+         	classpath "com.diffplug.spotless:spotless-plugin-gradle:3.24.2"
+        
+        
+    }
+    	
+    }
+    
+}
+
+apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: "net.ltgt.apt"
+apply plugin: 'com.google.cloud.tools.jib'
+apply plugin: "com.diffplug.gradle.spotless"
+
+
+//mainClassName = System.getProperty("mainClass")
+mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
+jib {
+  from {
+    image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
+  }
+  container {
+    appRoot = '/template/df-vision-api-template'
+    entrypoint = 'INHERIT'
+	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-secure-log-aggregation/resources/java_command_spec.json']
+	
+  }
+}
+group 'com.google.solutions'
+version '0.1.0'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+applicationDefaultJvmArgs = ['-Xms4g', '-Xmx16g']
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+   mavenCentral()
+    
+
+}
+
+dependencies {
+    compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: dataflowBeamVersion
+    compile group: 'org.apache.beam', name: 'beam-runners-google-cloud-dataflow-java', version: dataflowBeamVersion
+    compile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
+	compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
+	compile "com.google.auto.value:auto-value-annotations:1.6.2"
+    annotationProcessor "com.google.auto.value:auto-value:1.6.2"
+	compile group: 'com.google.cloud', name:'google-cloud-vision', version: visionApiVersion
+	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
+	testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
+    testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
+    testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '1.3'
+	testCompile 'junit:junit:4.12'
+
+
+
+}
+
+jar {
+    manifest {
+        attributes ('Main-Class': mainClassName)
+    }
+
+
+
+}
+
+compileJava {
+    // Add additional jvm argument
+    options.compilerArgs.addAll(['-Xlint:all'])
+}
+
+// default tasks when you run ./gradlew
+defaultTasks 'clean', 'assemble'
+// Google cloud dataflow requires the resource/main directory to exist
+task resources {
+    def resourcesDir = new File('build/resources/main')
+    resourcesDir.mkdirs()
+}
+
+run {
+    if (project.hasProperty('args')) {
+        args project.args.split('\\s')
+    }
+}
+spotless {
+  java {
+    googleJavaFormat()
+  }
+}
+
+run.mustRunAfter 'resources'
+
