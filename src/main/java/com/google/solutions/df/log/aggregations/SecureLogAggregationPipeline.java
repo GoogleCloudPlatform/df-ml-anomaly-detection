@@ -20,10 +20,13 @@ import com.google.solutions.df.log.aggregations.common.AvgFn;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.transforms.Group;
+import org.apache.beam.sdk.transforms.ApproximateUnique;
 import org.apache.beam.sdk.transforms.Count;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
@@ -57,14 +60,6 @@ public class SecureLogAggregationPipeline {
           .addStringField("protocolName")
           .addInt64Field("protocolNumber")
           .build();
-  public static final Schema networkLogAggregationSchema =
-      Schema.builder()
-          .addInt64Field("numberOfUniqueIPs")
-          .addInt64Field("numberOfUniquePorts")
-          .addDoubleField("avgTxBytes")
-          .addInt64Field("minTxBytes")
-          .addInt64Field("maxTxBytes")
-          .build();
 
   public static void main(String args[]) {
 
@@ -88,14 +83,24 @@ public class SecureLogAggregationPipeline {
                 Window.<Row>into(
                         FixedWindows.of(Duration.standardMinutes(options.getWindowInterval())))
                     .triggering(
-                        AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
+                        AfterProcessingTime.pastFirstElementInPane()
+                            .plusDelayOf(Duration.standardMinutes(1)))
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply(
-                "Group By Sub Id & DestIP",
+                "Group By SubId & DestIP",
                 Group.<Row>byFieldNames("subscriberId", "dstIP")
-                    .aggregateField("srcIP", Count.combineFn(), "numberOfUniqueIPs")
-                    .aggregateField("srcPort", Count.combineFn(), "numberOfUniquePorts")
+                    .aggregateField(
+                        "srcIP",
+                        new ApproximateUnique.ApproximateUniqueCombineFn<String>(
+                            1000, StringUtf8Coder.of()),
+                        "numberOfUniqueIPs")
+                    .aggregateField(
+                        "srcPort",
+                        new ApproximateUnique.ApproximateUniqueCombineFn<Long>(
+                            1000, VarLongCoder.of()),
+                        "numberOfUniquePorts")
+                    .aggregateField("srcIP", Count.combineFn(), "numberOfFlows")
                     .aggregateField("txBytes", new AvgFn(), "avgTxByes")
                     .aggregateField("txBytes", Max.ofLongs(), "maxTxByes")
                     .aggregateField("txBytes", Min.ofLongs(), "minTxByes"));
