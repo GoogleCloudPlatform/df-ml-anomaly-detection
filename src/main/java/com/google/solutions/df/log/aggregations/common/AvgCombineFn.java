@@ -16,10 +16,12 @@
 package com.google.solutions.df.log.aggregations.common;
 
 import java.io.Serializable;
-
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class AvgFn extends CombineFn<Long, AvgFn.Accum, Double> {
+public class AvgCombineFn extends CombineFn<Long, AvgCombineFn.Accum, Double> {
+  public static final Logger LOG = LoggerFactory.getLogger(AvgCombineFn.class);
 
   public static class Accum implements Serializable {
     long sum = 0;

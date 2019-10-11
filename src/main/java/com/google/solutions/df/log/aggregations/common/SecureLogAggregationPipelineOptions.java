@@ -57,8 +57,8 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setWriteMethod(BigQueryIO.Write.Method value);
 
-  @Description("Batch Insert Trigger Frequency defaulted to 10 mins")
-  @Default.Integer(10)
+  @Description("Batch Insert Trigger Frequency defaulted to 1 min")
+  @Default.Integer(1)
   Integer getBatchFrequency();
 
   void setBatchFrequency(Integer value);

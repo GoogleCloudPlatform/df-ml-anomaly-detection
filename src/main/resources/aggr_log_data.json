@@ -1,0 +1,62 @@
+ [
+    {
+      "name": "number_of_unique_ips",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "number_of_unique_ports",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "number_of_records",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "max_tx_bytes",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "min_tx_bytes",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "avg_tx_bytes",
+      "type": "FLOAT",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "max_rx_bytes",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "min_rx_bytes",
+      "type": "INTEGER",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "avg_rx_bytes",
+      "type": "FLOAT",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "max_duration",
+      "type": "TIMESTAMP",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "min_duration",
+      "type": "TIMESTAMP",
+      "mode": "REQUIRED"
+    },
+    {
+      "name": "avg_duration",
+      "type": "TIMESTAMP",
+      "mode": "REQUIRED"
+    }
+  ]
