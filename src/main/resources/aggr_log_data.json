@@ -7,7 +7,7 @@
   {
     "mode": "REQUIRED", 
     "name": "subscriber_id", 
-    "type": "INTEGER"
+    "type": "STRING"
   }, 
   {
     "mode": "REQUIRED", 
@@ -17,12 +17,12 @@
   {
     "fields": [
       {
-        "mode": "REQUIRED", 
+         
         "name": "number_of_unique_ips", 
         "type": "INTEGER"
       }, 
       {
-        "mode": "REQUIRED", 
+         
         "name": "number_of_unique_ports", 
         "type": "INTEGER"
       }, 
@@ -36,38 +36,38 @@
       }, 
       {
         "name": "min_tx_bytes", 
-        "type": "STRING"
+        "type": "INTEGER"
       }, 
       {
         "name": "avg_tx_bytes", 
-        "type": "STRING"
+        "type": "FLOAT"
       }, 
       {
         "name": "max_rx_bytes", 
-        "type": "STRING"
+        "type": "INTEGER"
       }, 
       {
         "name": "min_rx_bytes", 
-        "type": "STRING"
+        "type": "INTEGER"
       }, 
       {
         "name": "avg_rx_bytes", 
-        "type": "STRING"
+        "type": "FLOAT"
       }, 
       {
         "name": "max_duration", 
-        "type": "STRING"
+        "type": "INTEGER"
       }, 
       {
         "name": "min_duration", 
-        "type": "STRING"
+        "type": "INTEGER"
       }, 
       {
         "name": "avg_duration", 
-        "type": "STRING"
+        "type": "FLOAT"
       }
     ], 
-    "mode": "REPEATED", 
+    
     "name": "vector", 
     "type": "RECORD"
   }

@@ -37,6 +37,25 @@ public class Util {
               Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true))
           .collect(toSchema());
 
+  public static final Schema bqLogSchema =
+      Stream.of(
+              Schema.Field.of("subscriber_id", FieldType.STRING).withNullable(true),
+              Schema.Field.of("dst_subnet", FieldType.STRING).withNullable(true),
+              Schema.Field.of("transaction_time", FieldType.STRING).withNullable(true),
+              Schema.Field.of("number_of_records", FieldType.INT32).withNullable(true),
+              Schema.Field.of("number_of_ips", FieldType.INT32).withNullable(true),
+              Schema.Field.of("number_of_ports", FieldType.INT32).withNullable(true),
+              Schema.Field.of("max_tx_bytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("min_tx_bytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("avg_tx_bytes", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("max_rx_bytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("min_rx_bytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("avg_rx_bytes", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("max_duration", FieldType.INT32).withNullable(true),
+              Schema.Field.of("min_duration", FieldType.INT32).withNullable(true),
+              Schema.Field.of("avg_duration", FieldType.DOUBLE).withNullable(true))
+          .collect(toSchema());
+
   public static String findSubnet(String dstIP) {
     return new SubnetUtils(dstIP, maskString).getInfo().getCidrSignature();
   }

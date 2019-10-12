@@ -11,24 +11,25 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.Max;
 import org.apache.beam.sdk.transforms.Min;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.Values;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
+public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<KV<Row, Row>>> {
   private static final Logger LOG = LoggerFactory.getLogger(LogRowTransform.class);
   private static final Integer SAMPLE_SIZE = 1000000;
 
   @Override
-  public PCollection<Row> expand(PCollection<Row> row) {
+  public PCollection<KV<Row, Row>> expand(PCollection<Row> row) {
 
     return row.apply(
+            "Add Columns",
             AddFields.<Row>create()
                 .field("dstSubnet", Schema.FieldType.STRING)
                 .field("duration", Schema.FieldType.INT32))
-        .apply(MapElements.via(new LogAggrMapElement()))
+        .apply("Create Aggr Row", MapElements.via(new LogAggrMapElement()))
         .apply(
             "Group By SubId & DestSubNet",
             Group.<Row>byFieldNames("subscriberId", "dstSubnet")
@@ -51,10 +52,6 @@ public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Ro
                 .aggregateField("rxBytes", Min.ofIntegers(), "min_rx_bytes")
                 .aggregateField("duration", new AvgCombineFn(), "avg_duration")
                 .aggregateField("duration", Max.ofIntegers(), "max_duration")
-                .aggregateField("duration", Min.ofIntegers(), "min_duration"))
-        .apply(Values.<Row>create())
-        .apply(
-            AddFields.<Row>create()
-                .field("transaction_time", Schema.FieldType.STRING, Util.getTimeStamp()));
+                .aggregateField("duration", Min.ofIntegers(), "min_duration"));
   }
 }

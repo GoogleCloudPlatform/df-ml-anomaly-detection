@@ -20,7 +20,10 @@ import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
@@ -28,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
+public abstract class BQWriteTransform extends PTransform<PCollection<KV<Row, Row>>, WriteResult> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);
   private static final Integer NUM_OF_SHARDS = 10;
@@ -56,25 +59,53 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
   }
 
   @Override
-  public WriteResult expand(PCollection<Row> row) {
-    LOG.info("BQ Row {}", row.toString());
+  public WriteResult expand(PCollection<KV<Row, Row>> row) {
+
     switch (method()) {
       case FILE_LOADS:
-        return row.apply(
-            BigQueryIO.<Row>write()
-                .to(tableSpec())
-                .useBeamSchema()
-                .withMethod(BigQueryIO.Write.Method.FILE_LOADS)
-                .withTriggeringFrequency(Duration.standardMinutes(batchFrequency()))
-                .withNumFileShards(NUM_OF_SHARDS)
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+        return row.apply("Merge Rows", ParDo.of(new MergeDoFn()))
+            .apply(
+                BigQueryIO.<Row>write()
+                    .to(tableSpec())
+                    .useBeamSchema()
+                    .withMethod(BigQueryIO.Write.Method.FILE_LOADS)
+                    .withTriggeringFrequency(Duration.standardMinutes(batchFrequency()))
+                    .withNumFileShards(NUM_OF_SHARDS)
+                    .withTimePartitioning(new TimePartitioning().setType("DAY")));
 
       default:
-        return row.apply(
-            BigQueryIO.<Row>write()
-                .to(tableSpec())
-                .useBeamSchema()
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+        return row.apply("Merge Rows", ParDo.of(new MergeDoFn()))
+            .setRowSchema(Util.bqLogSchema)
+            .apply(
+                BigQueryIO.<Row>write()
+                    .to(tableSpec())
+                    .useBeamSchema()
+                    .withTimePartitioning(new TimePartitioning().setType("DAY")));
+    }
+  }
+
+  public class MergeDoFn extends DoFn<KV<Row, Row>, Row> {
+    @ProcessElement
+    public void processsElement(ProcessContext c) {
+      c.output(
+          Row.withSchema(Util.bqLogSchema)
+              .addValues(
+                  c.element().getKey().getString("subscriberId"),
+                  c.element().getKey().getString("dstSubnet"),
+                  Util.getTimeStamp(),
+                  c.element().getValue().getInt32("number_of_records"),
+                  c.element().getValue().getInt32("number_of_ips"),
+                  c.element().getValue().getInt32("number_of_ports"),
+                  c.element().getValue().getInt32("max_tx_bytes"),
+                  c.element().getValue().getInt32("min_tx_bytes"),
+                  c.element().getValue().getFloat("avg_tx_bytes"),
+                  c.element().getValue().getInt32("max_rx_bytes"),
+                  c.element().getValue().getInt32("min_rx_bytes"),
+                  c.element().getValue().getFloat("avg_rx_bytes"),
+                  c.element().getValue().getInt32("max_duration"),
+                  c.element().getValue().getInt32("min_duration"),
+                  c.element().getValue().getFloat("avg_duration"))
+              .build());
     }
   }
 }
