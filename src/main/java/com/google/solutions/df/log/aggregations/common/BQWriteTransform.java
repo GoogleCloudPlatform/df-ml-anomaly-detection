@@ -57,7 +57,7 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
 
   @Override
   public WriteResult expand(PCollection<Row> row) {
-
+    LOG.info("BQ Row {}", row.toString());
     switch (method()) {
       case FILE_LOADS:
         return row.apply(

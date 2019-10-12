@@ -20,12 +20,12 @@ import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class AvgCombineFn extends CombineFn<Long, AvgCombineFn.Accum, Double> {
+public class AvgCombineFn extends CombineFn<Integer, AvgCombineFn.Accum, Double> {
   public static final Logger LOG = LoggerFactory.getLogger(AvgCombineFn.class);
 
   public static class Accum implements Serializable {
-    long sum = 0;
-    long count = 0;
+    Integer sum = 0;
+    Integer count = 0;
 
     @Override
     public int hashCode() {
@@ -54,7 +54,7 @@ public class AvgCombineFn extends CombineFn<Long, AvgCombineFn.Accum, Double> {
   }
 
   @Override
-  public Accum addInput(Accum mutableAccumulator, Long input) {
+  public Accum addInput(Accum mutableAccumulator, Integer input) {
     mutableAccumulator.sum += input;
     mutableAccumulator.count++;
     return mutableAccumulator;

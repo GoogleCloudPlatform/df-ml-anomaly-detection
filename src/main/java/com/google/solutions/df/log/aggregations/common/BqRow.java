@@ -1,7 +1,6 @@
 package com.google.solutions.df.log.aggregations.common;
 
 import com.google.auto.value.AutoValue;
-import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 import org.slf4j.Logger;
@@ -12,32 +11,35 @@ import org.slf4j.LoggerFactory;
 public abstract class BqRow {
   private static final Logger LOG = LoggerFactory.getLogger(BqRow.class);
 
-  public abstract Long number_of_unique_ips();
+  public abstract Integer subscriber_id();
 
-  public abstract Long number_of_unique_ports();
+  public abstract String dst_subnet();
 
-  public abstract Long number_of_records();
+  public abstract Integer number_of_unique_ips();
 
-  public abstract Long max_tx_bytes();
+  public abstract Integer number_of_unique_ports();
 
-  public abstract Long min_tx_bytes();
+  public abstract Integer number_of_records();
 
-  public abstract Long avg_tx_bytes();
+  public abstract Integer max_tx_bytes();
 
-  public abstract Long max_rx_bytes();
+  public abstract Integer min_tx_bytes();
 
-  public abstract Long min_rx_bytes();
+  public abstract Double avg_tx_bytes();
 
-  public abstract Long avg_rx_bytes();
+  public abstract Integer max_rx_bytes();
 
-  public abstract Long avg_duration();
+  public abstract Integer min_rx_bytes();
 
-  public abstract Long min_duration();
+  public abstract Double avg_rx_bytes();
 
-  public abstract Long max_duration();
+  public abstract Double avg_duration();
 
-  @Nullable
-  public abstract Long transaction_timestamp();
+  public abstract Integer min_duration();
+
+  public abstract Integer max_duration();
+
+  public abstract String transaction_timestamp();
 
   abstract Builder toBuilder();
 
@@ -47,36 +49,37 @@ public abstract class BqRow {
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setNumber_of_unique_ips(Long numberOfIPs);
 
-    public abstract Builder setNumber_of_unique_ports(Long numberOfPorts);
+    public abstract Builder setNumber_of_unique_ips(Integer numberOfIPs);
 
-    public abstract Builder setNumber_of_records(Long numberOfRecords);
+    public abstract Builder setSubscriber_id(Integer subscriberId);
 
-    public abstract Builder setMax_tx_bytes(Long maxTxBytes);
+    public abstract Builder setDst_subnet(String subnet);
 
-    public abstract Builder setMin_tx_bytes(Long minTxBytes);
+    public abstract Builder setNumber_of_unique_ports(Integer numberOfPorts);
 
-    public abstract Builder setAvg_tx_bytes(Long avgTxBytes);
+    public abstract Builder setNumber_of_records(Integer numberOfRecords);
 
-    public abstract Builder setMax_rx_bytes(Long maxRxBytes);
+    public abstract Builder setMax_tx_bytes(Integer maxTxBytes);
 
-    public abstract Builder setMin_rx_bytes(Long minRxBytes);
+    public abstract Builder setMin_tx_bytes(Integer minTxBytes);
 
-    public abstract Builder setAvg_rx_bytes(Long avgRxBytes);
+    public abstract Builder setAvg_tx_bytes(Double avgTxBytes);
 
-    public abstract Builder setAvg_duration(Long avgDuration);
+    public abstract Builder setMax_rx_bytes(Integer maxRxBytes);
 
-    public abstract Builder setMax_duration(Long maxDuration);
+    public abstract Builder setMin_rx_bytes(Integer minRxBytes);
 
-    public abstract Builder setMin_duration(Long minDuration);
+    public abstract Builder setAvg_rx_bytes(Double avgRxBytes);
 
-    public abstract Builder setTransaction_timestamp(Long timestamp);
+    public abstract Builder setAvg_duration(Double avgDuration);
+
+    public abstract Builder setMax_duration(Integer maxDuration);
+
+    public abstract Builder setMin_duration(Integer minDuration);
+
+    public abstract Builder setTransaction_timestamp(String timestamp);
 
     public abstract BqRow build();
   }
-
-  public BqRow withTimeStamp(Long timestamp) {
-    return toBuilder().setTransaction_timestamp(timestamp).build();
-  };
 }

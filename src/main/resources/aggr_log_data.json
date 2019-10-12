@@ -1,62 +1,74 @@
- [
-    {
-      "name": "number_of_unique_ips",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "number_of_unique_ports",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "number_of_records",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "max_tx_bytes",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "min_tx_bytes",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "avg_tx_bytes",
-      "type": "FLOAT",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "max_rx_bytes",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "min_rx_bytes",
-      "type": "INTEGER",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "avg_rx_bytes",
-      "type": "FLOAT",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "max_duration",
-      "type": "TIMESTAMP",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "min_duration",
-      "type": "TIMESTAMP",
-      "mode": "REQUIRED"
-    },
-    {
-      "name": "avg_duration",
-      "type": "TIMESTAMP",
-      "mode": "REQUIRED"
-    }
-  ]
+[
+  {
+    "mode": "REQUIRED", 
+    "name": "transaction_time", 
+    "type": "STRING"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "subscriber_id", 
+    "type": "INTEGER"
+  }, 
+  {
+    "mode": "REQUIRED", 
+    "name": "dst_subnet", 
+    "type": "STRING"
+  }, 
+  {
+    "fields": [
+      {
+        "mode": "REQUIRED", 
+        "name": "number_of_unique_ips", 
+        "type": "INTEGER"
+      }, 
+      {
+        "mode": "REQUIRED", 
+        "name": "number_of_unique_ports", 
+        "type": "INTEGER"
+      }, 
+      {
+        "name": "number_of_records", 
+        "type": "INTEGER"
+      }, 
+      {
+        "name": "max_tx_bytes", 
+        "type": "INTEGER"
+      }, 
+      {
+        "name": "min_tx_bytes", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "avg_tx_bytes", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "max_rx_bytes", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "min_rx_bytes", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "avg_rx_bytes", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "max_duration", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "min_duration", 
+        "type": "STRING"
+      }, 
+      {
+        "name": "avg_duration", 
+        "type": "STRING"
+      }
+    ], 
+    "mode": "REPEATED", 
+    "name": "vector", 
+    "type": "RECORD"
+  }
+]
