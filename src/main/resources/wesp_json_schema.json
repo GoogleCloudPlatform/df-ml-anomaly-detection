@@ -1,0 +1,17 @@
+{
+    "subscriberId": "{{username()}}",
+    "srcIP": "{{ipv4()}}",
+    "dstIP": "{{subnet()}}",
+    "srcPort": {{integer(1000,5000)}},
+    "dstPort": {{integer(1000,5000)}},
+	"txBytes": {{integer(10,1000)}},
+	"rxBytes": {{integer(10,1000)}},
+	"startTime": {{starttime()}},
+	"endTime": {{endtime()}},
+	"tcpFlag": {{integer(0,65)}},
+	"protocolName": "{{random("tcp","udp","http")}}",
+	"protocolNumber": {{integer(0,1)}}
+}
+
+
+

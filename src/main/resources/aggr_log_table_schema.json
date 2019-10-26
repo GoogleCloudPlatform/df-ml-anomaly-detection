@@ -14,14 +14,13 @@
     "name": "dst_subnet", 
     "type": "STRING"
   }, 
+  
   {
-    "fields": [
-      {
          
         "name": "number_of_unique_ips", 
         "type": "INTEGER"
-      }, 
-      {
+    }, 
+    {
          
         "name": "number_of_unique_ports", 
         "type": "INTEGER"
@@ -66,9 +65,6 @@
         "name": "avg_duration", 
         "type": "FLOAT"
       }
-    ], 
-    
-    "name": "vector", 
-    "type": "RECORD"
-  }
+     
+  
 ]

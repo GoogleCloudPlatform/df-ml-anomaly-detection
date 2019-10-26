@@ -19,31 +19,12 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * Pipeline options
  *
- * <p>To execute this pipeline locally, specify following param
- *
- * <pre>{@code
- * --subcriberId=projects/[project-id]/subscriptions/[sub-id]
- * }</pre>
- *
- * <pre>{@code
- * --writeMethod=FILE_LOAD
- * }</pre>
- *
- * <pre>{@code
- * --batchFrequency=2
- * }</pre>
- *
- * <pre>{@code
- * --tableSpec=<project_id>:<dataset_id>.<table_id>
- * }</pre>
- *
- * <pre>{@code
- * --windowInterval=5
- * }</pre>
+ * <p>To execute this pipeline locally, specify following params
  */
 public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOptions {
   @Description("Subscriber Id to receive message from")
@@ -63,7 +44,7 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setBatchFrequency(Integer value);
 
-  @Description("BQ Table Spec- Must exist as partition table")
+  @Description("BQ Aggr Table Spec- Must exist as partition table")
   String getTableSpec();
 
   void setTableSpec(String value);
@@ -73,4 +54,19 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
   Integer getWindowInterval();
 
   void setWindowInterval(Integer value);
+
+  @Description("GCS Path for the Cluster Query")
+  String getClusterQuery();
+
+  void setClusterQuery(String value);
+
+  @Description("BQ Outlier Table Spec- Must exist as partition table")
+  String getOutlierTableSpec();
+
+  void setOutlierTableSpec(String value);
+
+  @Description("GCS Path for the file load")
+  ValueProvider<String> getCustomGcsTempLocation();
+
+  void getCustomGcsTempLocation(ValueProvider<String> value);
 }

@@ -15,7 +15,7 @@
  */
 buildscript {
     ext {
-        dataflowBeamVersion = '2.15.0'
+        dataflowBeamVersion = '2.16.0'
         visionApiVersion = '1.87.0'
         
     }
@@ -53,7 +53,7 @@ jib {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
   }
   container {
-    appRoot = '/template/df-vision-api-template'
+    appRoot = '/template/df-secure-log-aggregation'
     entrypoint = 'INHERIT'
 	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-secure-log-aggregation/resources/java_command_spec.json']
 	
@@ -73,6 +73,9 @@ tasks.withType(JavaCompile) {
 
 repositories {
    mavenCentral()
+   flatDir {
+       		dirs 'libs'
+   		}
     
 
 }
@@ -80,17 +83,24 @@ repositories {
 dependencies {
     compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: dataflowBeamVersion
     compile group: 'org.apache.beam', name: 'beam-runners-google-cloud-dataflow-java', version: dataflowBeamVersion
-    compile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
+    compile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion	
+	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-sketching', version: dataflowBeamVersion
+	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-sql', version: dataflowBeamVersion
 	compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
+	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-zetasketch', version: dataflowBeamVersion
 	compile "com.google.auto.value:auto-value-annotations:1.6.2"
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
 	compile group: 'com.google.cloud', name:'google-cloud-vision', version: visionApiVersion
+	compile 'com.google.cloud:google-cloud-storage:1.98.0'
+	compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
 	compile 'commons-net:commons-net:3.6'
+    compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'	
 	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
 	testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
     testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
     testCompile group: 'org.hamcrest', name: 'hamcrest-library', version: '1.3'
 	testCompile 'junit:junit:4.12'
+	
 
 
 
