@@ -19,7 +19,6 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.options.ValueProvider;
 
 /**
  * Pipeline options
@@ -66,7 +65,7 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
   void setOutlierTableSpec(String value);
 
   @Description("GCS Path for the file load")
-  ValueProvider<String> getCustomGcsTempLocation();
+  String getCustomGcsTempLocation();
 
-  void getCustomGcsTempLocation(ValueProvider<String> value);
+  void setCustomGcsTempLocation(String value);
 }

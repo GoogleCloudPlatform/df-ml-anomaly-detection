@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);
-  private static final Integer NUM_OF_SHARDS = 10000;
+  private static final Integer NUM_OF_SHARDS = 100;
 
   @Nullable
   public abstract Integer batchFrequency();
@@ -82,6 +82,16 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
                     new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
                 .withTimePartitioning(new TimePartitioning().setType("DAY")));
 
+      case STREAMING_INSERTS:
+        return row.apply(
+            BigQueryIO.<Row>write()
+                .to(tableSpec())
+                .useBeamSchema()
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
+                .withClustering(
+                    new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
+                .withTimePartitioning(new TimePartitioning().setType("DAY")));
       default:
         return row.apply(
             BigQueryIO.<Row>write()

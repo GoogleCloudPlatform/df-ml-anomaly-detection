@@ -16,13 +16,14 @@
 package com.google.solutions.df.log.aggregations.common;
 
 import com.google.auto.value.AutoValue;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import org.apache.beam.sdk.schemas.transforms.Group;
+import java.util.Map.Entry;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Min;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
@@ -31,8 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class PredictTransform
-    extends PTransform<PCollection<Row>, PCollection<KV<Row, Row>>> {
+public abstract class PredictTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(PredictTransform.class);
 
   public abstract PCollectionView<List<CentroidVector>> centroidFeatureVector();
@@ -49,19 +49,14 @@ public abstract class PredictTransform
   }
 
   @Override
-  public PCollection<KV<Row, Row>> expand(PCollection<Row> input) {
+  public PCollection<Row> expand(PCollection<Row> input) {
 
     return input
         .apply(
             "FindEuclideanDistance",
             ParDo.of(new FindEuclideanDistance(centroidFeatureVector()))
                 .withSideInputs(centroidFeatureVector()))
-        .setRowSchema(Util.distanceFromCentroidSchema)
-        .apply(
-            "Find Nearest Centroid Distance",
-            Group.<Row>byFieldNames("dst_subnet")
-                .aggregateField(
-                    "distance_from_centroid", Min.ofDoubles(), "distance_from_nearest_centroid"));
+        .setRowSchema(Util.outlierSchema);
   }
 
   public static class FindEuclideanDistance extends DoFn<Row, Row> {
@@ -73,6 +68,7 @@ public abstract class PredictTransform
 
     @ProcessElement
     public void processElement(ProcessContext c) {
+      HashMap<Integer, Double> centroidMap = new HashMap<Integer, Double>();
       double[] aggrFeatureVector = Util.getAggrVector(c.element());
       c.sideInput(centroidFeature)
           .forEach(
@@ -82,30 +78,33 @@ public abstract class PredictTransform
                         .compute(
                             aggrFeatureVector,
                             feature.featureVectors().stream().mapToDouble(d -> d).toArray());
-
-                c.output(
-                    Row.withSchema(Util.distanceFromCentroidSchema)
-                        .addValues(
-                            c.element().getString("subscriber_id"),
-                            c.element().getString("dst_subnet"),
-                            c.element().getString("transaction_time"),
-                            c.element().getInt32("number_of_unique_ips"),
-                            c.element().getInt32("number_of_unique_ports"),
-                            c.element().getInt32("number_of_records"),
-                            c.element().getInt32("max_tx_bytes"),
-                            c.element().getInt32("min_tx_bytes"),
-                            c.element().getDouble("avg_tx_bytes"),
-                            c.element().getInt32("max_rx_bytes"),
-                            c.element().getInt32("min_rx_bytes"),
-                            c.element().getDouble("avg_rx_bytes"),
-                            c.element().getInt32("max_duration"),
-                            c.element().getInt32("min_duration"),
-                            c.element().getDouble("avg_duration"),
-                            feature.centroidId(),
-                            feature.radius(),
-                            distanceFromCentroid)
-                        .build());
+                centroidMap.put(feature.centroidId(), distanceFromCentroid);
               });
+      // centroid_id,
+      Entry<Integer, Double> closestDistance =
+          Collections.min(centroidMap.entrySet(), Comparator.comparing(Entry::getValue));
+
+      c.output(
+          Row.withSchema(Util.outlierSchema)
+              .addValues(
+                  c.element().getString("subscriber_id"),
+                  c.element().getString("dst_subnet"),
+                  c.element().getString("transaction_time"),
+                  c.element().getInt32("number_of_unique_ips"),
+                  c.element().getInt32("number_of_unique_ports"),
+                  c.element().getInt32("number_of_records"),
+                  c.element().getInt32("max_tx_bytes"),
+                  c.element().getInt32("min_tx_bytes"),
+                  c.element().getDouble("avg_tx_bytes"),
+                  c.element().getInt32("max_rx_bytes"),
+                  c.element().getInt32("min_rx_bytes"),
+                  c.element().getDouble("avg_rx_bytes"),
+                  c.element().getInt32("max_duration"),
+                  c.element().getInt32("min_duration"),
+                  c.element().getDouble("avg_duration"),
+                  closestDistance.getKey(),
+                  closestDistance.getValue())
+              .build());
     }
   }
 }

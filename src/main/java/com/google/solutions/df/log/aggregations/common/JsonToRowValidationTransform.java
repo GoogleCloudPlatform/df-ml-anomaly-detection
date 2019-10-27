@@ -26,6 +26,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.apache.commons.validator.routines.InetAddressValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,15 @@ public class JsonToRowValidationTransform
       String input = c.element();
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
-        c.output(convertedObject.toString());
+        if (InetAddressValidator.getInstance()
+            .isValidInet4Address(convertedObject.get("dstIP").getAsString())) {
+          c.output(convertedObject.toString());
+
+        } else {
+          String errMsg = String.format("Not a valid IP address %s", input);
+          LOG.error(errMsg);
+          c.output(Util.failureTag, errMsg);
+        }
       } catch (JsonSyntaxException e) {
         c.output(Util.failureTag, e.getMessage());
       }

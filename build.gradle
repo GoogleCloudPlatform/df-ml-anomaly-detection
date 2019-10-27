@@ -46,8 +46,8 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
 
-//mainClassName = System.getProperty("mainClass")
-mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
+mainClassName = System.getProperty("mainClass")
+//mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
@@ -84,8 +84,6 @@ dependencies {
     compile group: 'org.apache.beam', name: 'beam-sdks-java-core', version: dataflowBeamVersion
     compile group: 'org.apache.beam', name: 'beam-runners-google-cloud-dataflow-java', version: dataflowBeamVersion
     compile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion	
-	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-sketching', version: dataflowBeamVersion
-	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-sql', version: dataflowBeamVersion
 	compile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
 	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-zetasketch', version: dataflowBeamVersion
 	compile "com.google.auto.value:auto-value-annotations:1.6.2"
@@ -93,6 +91,7 @@ dependencies {
 	compile group: 'com.google.cloud', name:'google-cloud-vision', version: visionApiVersion
 	compile 'com.google.cloud:google-cloud-storage:1.98.0'
 	compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
+	compile group: 'commons-validator', name: 'commons-validator', version: '1.4.0'
 	compile 'commons-net:commons-net:3.6'
     compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'	
 	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion

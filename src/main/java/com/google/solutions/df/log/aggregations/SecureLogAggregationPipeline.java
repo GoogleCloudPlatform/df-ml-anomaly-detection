@@ -22,7 +22,6 @@ import com.google.solutions.df.log.aggregations.common.ClusterDataMapElement;
 import com.google.solutions.df.log.aggregations.common.JsonToRowValidationTransform;
 import com.google.solutions.df.log.aggregations.common.LogRowTransform;
 import com.google.solutions.df.log.aggregations.common.MergeLogAggrMap;
-import com.google.solutions.df.log.aggregations.common.MergeOutlierMap;
 import com.google.solutions.df.log.aggregations.common.PredictTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
@@ -33,9 +32,11 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
@@ -67,7 +68,7 @@ public class SecureLogAggregationPipeline {
                 BigQueryIO.read(new ClusterDataMapElement())
                     .fromQuery(Util.getClusterDetails(options.getClusterQuery()))
                     .usingStandardSql()
-                    .withMethod(Method.DIRECT_READ))
+                    .withMethod(Method.EXPORT))
             .apply("Centroid Data As Side Input", View.asList());
 
     PCollection<Row> rows =
@@ -80,8 +81,10 @@ public class SecureLogAggregationPipeline {
                 Window.<Row>into(
                         FixedWindows.of(Duration.standardMinutes(options.getWindowInterval())))
                     .triggering(
-                        AfterProcessingTime.pastFirstElementInPane()
-                            .plusDelayOf(Duration.standardMinutes(1)))
+                        AfterWatermark.pastEndOfWindow()
+                            .withEarlyFirings(
+                                AfterProcessingTime.pastFirstElementInPane()
+                                    .plusDelayOf(Duration.standardMinutes(3))))
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply("Log Aggregation Transform", new LogRowTransform())
@@ -94,17 +97,19 @@ public class SecureLogAggregationPipeline {
             .setTableSpec(options.getTableSpec())
             .setBatchFrequency(options.getBatchFrequency())
             .setMethod(options.getWriteMethod())
-            .setGcsTempLocation(options.getCustomGcsTempLocation())
+            .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
             .build());
 
     // prediction - let's have some fun
     rows.apply(
             "Find Nearest Distance From Centroid",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())
-        .apply("Merge with Oulier Schema", MapElements.via(new MergeOutlierMap()))
         .apply(
             "Streaming Insert To Outliers Table",
-            BQWriteTransform.newBuilder().setTableSpec(options.getOutlierTableSpec()).build());
+            BQWriteTransform.newBuilder()
+                .setTableSpec(options.getOutlierTableSpec())
+                .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+                .build());
     return p.run();
   }
 }
