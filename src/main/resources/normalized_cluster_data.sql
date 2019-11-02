@@ -1,0 +1,1 @@
+SELECT * FROM `custom-network-test.network_logs.normalized_centroid_data` 

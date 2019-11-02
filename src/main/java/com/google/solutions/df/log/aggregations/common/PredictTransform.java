@@ -79,11 +79,18 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                             aggrFeatureVector,
                             feature.featureVectors().stream().mapToDouble(d -> d).toArray());
                 centroidMap.put(feature.centroidId(), distanceFromCentroid);
+
+                LOG.debug(
+                    "Centroid_id {} , distance {}", feature.centroidId(), distanceFromCentroid);
               });
       // centroid_id,
       Entry<Integer, Double> closestDistance =
           Collections.min(centroidMap.entrySet(), Comparator.comparing(Entry::getValue));
 
+      LOG.debug(
+          "****closet distance {}, centroid {}",
+          closestDistance.getKey(),
+          closestDistance.getValue());
       c.output(
           Row.withSchema(Util.outlierSchema)
               .addValues(
