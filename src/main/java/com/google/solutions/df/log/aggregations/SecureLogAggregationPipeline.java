@@ -99,7 +99,7 @@ public class SecureLogAggregationPipeline {
 
     // prediction - let's have some fun
     rows.apply(
-            "Find Nearest Distance From Centroid",
+            "Find Outliers",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())
         .apply(
             "Streaming Insert To Outliers Table",

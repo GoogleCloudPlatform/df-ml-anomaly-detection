@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 @AutoValue
 public abstract class PredictTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(PredictTransform.class);
+  public static final Double THRESH_HOLD_PARAM = 2.0;
 
   public abstract PCollectionView<List<CentroidVector>> centroidFeatureVector();
 
@@ -53,10 +54,59 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
 
     return input
         .apply(
-            "FindEuclideanDistance",
+            "Find Dst(Nearest Centroid)",
             ParDo.of(new FindEuclideanDistance(centroidFeatureVector()))
                 .withSideInputs(centroidFeatureVector()))
+        .setRowSchema(Util.outlierSchema)
+        .apply(
+            "Find Outliers",
+            ParDo.of(new CheckOutlierThreshold(centroidFeatureVector()))
+                .withSideInputs(centroidFeatureVector()))
         .setRowSchema(Util.outlierSchema);
+  }
+
+  public static class CheckOutlierThreshold extends DoFn<Row, Row> {
+    private PCollectionView<List<CentroidVector>> centroidFeature;
+
+    public CheckOutlierThreshold(PCollectionView<List<CentroidVector>> centroidFeature) {
+      this.centroidFeature = centroidFeature;
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      Row aggrData = c.element();
+      double[] inputVector = Util.getAggrVector(aggrData);
+
+      CentroidVector centroidVector =
+          c.sideInput(centroidFeature).stream()
+              .filter(
+                  centroid ->
+                      centroid.centroidId().intValue()
+                          == aggrData.getInt32("centroid_id").intValue())
+              .findFirst()
+              .orElse(null);
+
+      if (centroidVector != null) {
+        double normalizedDistance =
+            Util.calculateStdDeviation(
+                inputVector,
+                centroidVector.featureVectors().stream().mapToDouble(d -> d).toArray());
+        boolean outlierFound =
+            (normalizedDistance / centroidVector.normalizedDistance()) > THRESH_HOLD_PARAM
+                ? true
+                : false;
+        if (outlierFound) {
+          c.output(aggrData);
+          LOG.info(
+              "*****Outlier Found*****- Centroid ID {}, Normalized Std Dev{}, InputFeature Std Dev {}",
+              centroidVector.centroidId(),
+              centroidVector.normalizedDistance(),
+              normalizedDistance);
+        }
+      } else {
+        LOG.info("Centroid Vector is null for centr {}", aggrData.getInt32("centroid_id"));
+      }
+    }
   }
 
   public static class FindEuclideanDistance extends DoFn<Row, Row> {
@@ -109,8 +159,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                   c.element().getInt32("max_duration"),
                   c.element().getInt32("min_duration"),
                   c.element().getDouble("avg_duration"),
-                  closestDistance.getKey(),
-                  closestDistance.getValue())
+                  closestDistance.getKey())
               .build());
     }
   }

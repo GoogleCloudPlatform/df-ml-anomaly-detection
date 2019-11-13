@@ -18,17 +18,16 @@ package com.google.solutions.df.log.aggregations.common;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.beam.sdk.schemas.Schema.toSchema;
 
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.common.collect.ImmutableList;
 import java.net.URI;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.net.util.SubnetUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -39,6 +38,11 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.google.common.collect.ImmutableList;
 
 public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
@@ -100,9 +104,7 @@ public class Util {
               Schema.Field.of("max_duration", FieldType.INT32).withNullable(true),
               Schema.Field.of("min_duration", FieldType.INT32).withNullable(true),
               Schema.Field.of("avg_duration", FieldType.DOUBLE).withNullable(true),
-              Schema.Field.of("centroid_id", FieldType.INT32).withNullable(true),
-              Schema.Field.of("nearest_distance_from_centroid", FieldType.DOUBLE)
-                  .withNullable(true))
+              Schema.Field.of("centroid_id", FieldType.INT32).withNullable(true).withNullable(true))
           .collect(toSchema());
 
   public static String findSubnet(String dstIP) {
@@ -134,8 +136,6 @@ public class Util {
 
   public static double[] getAggrVector(Row aggrData) {
     return ImmutableList.of(
-            aggrData.getInt32("number_of_unique_ips").doubleValue(),
-            aggrData.getInt32("number_of_unique_ports").doubleValue(),
             aggrData.getInt32("number_of_records").doubleValue(),
             aggrData.getInt32("max_tx_bytes").doubleValue(),
             aggrData.getInt32("min_tx_bytes").doubleValue(),
@@ -149,5 +149,15 @@ public class Util {
         .stream()
         .mapToDouble(d -> d)
         .toArray();
+  }
+
+  public static double calculateStdDeviation(double[] inputVector, double[] featureVector) {
+
+    double[] differences =
+        IntStream.range(0, inputVector.length)
+            .mapToDouble(i -> inputVector[i] - featureVector[i])
+            .toArray();
+    StandardDeviation sd = new StandardDeviation();
+    return sd.evaluate(differences);
   }
 }

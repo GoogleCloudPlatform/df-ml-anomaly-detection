@@ -27,7 +27,7 @@ public abstract class CentroidVector implements Serializable {
 
   public abstract Integer centroidId();
 
-  public abstract Double radius();
+  public abstract Double normalizedDistance();
 
   public abstract ImmutableList<Double> featureVectors();
 
@@ -35,7 +35,7 @@ public abstract class CentroidVector implements Serializable {
   public abstract static class Builder {
     public abstract Builder setCentroidId(Integer value);
 
-    public abstract Builder setRadius(Double value);
+    public abstract Builder setNormalizedDistance(Double value);
 
     public abstract Builder setFeatureVectors(ImmutableList<Double> values);
 

@@ -27,8 +27,6 @@ public class ClusterDataMapElement
 
     ImmutableList<Double> featureVector =
         ImmutableList.of(
-            Double.parseDouble(input.getRecord().get("number_of_unique_ips").toString()),
-            Double.parseDouble(input.getRecord().get("number_of_unique_ports").toString()),
             Double.parseDouble(input.getRecord().get("number_of_records").toString()),
             Double.parseDouble(input.getRecord().get("max_tx_bytes").toString()),
             Double.parseDouble(input.getRecord().get("min_tx_bytes").toString()),
@@ -42,7 +40,8 @@ public class ClusterDataMapElement
 
     return CentroidVector.newBuilder()
         .setCentroidId(Integer.parseInt(input.getRecord().get("centroid_id").toString()))
-        .setRadius(Double.parseDouble(input.getRecord().get("cluster_radius").toString()))
+        .setNormalizedDistance(
+            Double.parseDouble(input.getRecord().get("normalized_dest").toString()))
         .setFeatureVectors(featureVector)
         .build();
   }
