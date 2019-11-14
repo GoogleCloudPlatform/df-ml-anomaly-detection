@@ -55,7 +55,7 @@ jib {
   container {
     appRoot = '/template/df-secure-log-aggregation'
     entrypoint = 'INHERIT'
-	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-secure-log-aggregation/resources/java_command_spec.json']
+	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-log-aggregation/resources/java_command_spec.json']
 	
   }
 }
