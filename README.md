@@ -3,7 +3,8 @@ A dataflow streaming pipeline to process large scale network security log data f
 
 1. Aggregate Network logs in N-mins window.
 	- Fixed Window with After Processing time triggers 
-	- Using schema infering to group by subnet and subscriberId and aggregate data. There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
+	- Using schema infering to group by subnet and subscriberId and aggregate data. 
+	- There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
 	- Use N minutes intervals (FILE_LOAD) to batch insert to BQ in a partition & clustered table.  
 2. Create K-Means Clustering model using BQ ML.
 	- Using BQ ML query to create K-Means model. This is done using stored procedure and schedule query in BQ.
@@ -14,11 +15,11 @@ A dataflow streaming pipeline to process large scale network security log data f
 	- Streaming insert to BQ table if outliers found.
  
 
-# Reference Architecture
+## Reference Architecture
 
 ![ref_arch](diagram/ref-arch.png)
 
-#  How It works?
+##  How It works?
 
 ### Example input log data and output after aggregation
 
@@ -87,7 +88,7 @@ Output after aggregation in N-min fixed window and processing time trigger.
 }
 ```
 
-#### Create a K-Means model using BQ ML 
+### Create a K-Means model using BQ ML 
 
 Please use the json schema (aggr_log_table_schema.json) to create the table in BQ.
 Cluster_model_data table is partition by 'ingestion timestamp' and clustered by dst_subnet and subscriber_id.
@@ -103,7 +104,7 @@ from network_logs.train_data;
 
 ```
 
-#### Normalize Data
+### Normalize Data
 
 1. Predict on the train dataset to get the nearest distance from centroid for each record.
 2. Calculate the STD DEV for each point to normalize
@@ -155,14 +156,14 @@ group by c.centroid_id);
 
 ```
 
-#### Find the Outliers
+### Find the Outliers
 
 1. Find the nearest distance from the centroid.  
 2. Calculate STD DEV between input and centroid vectors 
 3. Find the Z Score (difference between a value in the sample and the mean, and divide it by the standard deviation)
 4. A socre of 2 (2 STD DEV above the mean is an OUTLIER). 
 
-# Before Start
+## Before Start
 
 ````
 gcloud services enable dataflow
@@ -258,7 +259,7 @@ gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcI
 INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 
 ```
-# Screenshot
+## Screenshot
 
 Pipeling DAG 
 
@@ -270,7 +271,7 @@ Msg Rate
 
 Ack Message Rate
 
-![ref_arch](diagram/un-ack.png)
+![ref_arch](diagram/un-ack-msg.png)
 
 CPU Utilization
 
@@ -280,7 +281,10 @@ System Latency
 
 ![ref_arch](diagram/latency.png)
 
-
+## To Do
+- Unit test 
+- Take out references
+- Flex Template Integration -Jib
 
 
 
