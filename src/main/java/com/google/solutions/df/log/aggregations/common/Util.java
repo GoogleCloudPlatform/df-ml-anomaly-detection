@@ -18,10 +18,13 @@ package com.google.solutions.df.log.aggregations.common;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.beam.sdk.schemas.Schema.toSchema;
 
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.google.common.collect.ImmutableList;
 import java.net.URI;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
@@ -38,11 +41,6 @@ import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.common.collect.ImmutableList;
 
 public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);

@@ -1,20 +1,29 @@
 # Network Anamoly Detection Pipeline using Dataflow and  BQ-ML 
-A dataflow streaming pipeline that can be used to process large scale network logs either from from GCS or PubSub to detect outliers using K-Means clustering. In high level, this repo will walk you through in following areas:
+A dataflow streaming pipeline to process large scale network security log data from GCS or PubSub and find outliers using K-Means clustering. In high level, this repo will walk you through following three areas:
 
 1. Aggregate Network logs in N-mins window.
+	- Fixed Window with After Processing time triggers 
+	- Using schema infering to group by subnet and subscriberId and aggregate data. There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
+	- Use N minutes intervals (FILE_LOAD) to batch insert to BQ in a partition & clustered table.  
 2. Create K-Means Clustering model using BQ ML.
+	- Using BQ ML query to create K-Means model. This is done using stored procedure and schedule query in BQ.
+	- Normalized the data by finding STD DEV for each cluster to help with outlier detection. 
 3. Prediction (Batch/Online)
+	- Find Z-Score and check if it's 2 STD DEV above the mean.
+	- Use dataflow to calculate nearest distance from centroid and score between sample and centroid. 
+	- Streaming insert to BQ table if outliers found.
  
 
 # Reference Architecture
 
 ![ref_arch](diagram/ref-arch.png)
 
-# Help Me Understand How It works
+#  How It works?
 
 ### Example input log data and output after aggregation
 
-#### Sample Input Data
+Sample Input Data
+
 ```
 {
  \"subscriberId\": \"100\",
@@ -47,7 +56,7 @@ A dataflow streaming pipeline that can be used to process large scale network lo
 
 ```
 
-#### Output after aggregation in N-min fixed window and processing time trigger.
+Output after aggregation in N-min fixed window and processing time trigger.
 
 1. Added processing timestamp.
 2. Group by destination subnet and subscriberId
@@ -76,11 +85,9 @@ A dataflow streaming pipeline that can be used to process large scale network lo
   "min_duration": "9",
   "avg_duration": "54.5"
 }
-
-
 ```
 
-#### Create a K-Meanss model using BQ ML 
+#### Create a K-Means model using BQ ML 
 
 Please use the json schema (aggr_log_table_schema.json) to create the table in BQ.
 Cluster_model_data table is partition by 'ingestion timestamp' and clustered by dst_subnet and subscriber_id.
@@ -155,7 +162,7 @@ group by c.centroid_id);
 3. Find the Z Score (difference between a value in the sample and the mean, and divide it by the standard deviation)
 4. A socre of 2 (2 STD DEV above the mean is an OUTLIER). 
 
-## Let's Get Started
+# Before Start
 
 ````
 gcloud services enable dataflow
@@ -164,7 +171,7 @@ gcloud services enable storage_component
 
 ````
 
-### Creating a BigQuery Dataset and Tables
+## Creating a BigQuery Dataset and Tables
 
 Dataset
 
@@ -177,7 +184,7 @@ network_logs
 Aggregation Data Table 
 
 ```
-bq mk -t --aggr_log_table_schema.json  \
+bq mk -t --schema aggr_log_table_schema.json  \
 --time_partitioning_type=DAY \
 --clustering_fields=dst_subnet, subscriber_id \
 --description "Network Log Partition Table" \
@@ -189,29 +196,91 @@ custom-network-test:network_logs.cluster_model_data
 Outlier Table 
 
 ```
-bq mk -t --outlier_table_schema.json \
+bq mk -t --schema outlier_table_schema.json \
 --label myorg:prod \
 custom-network-test:network_logs.outlier_data 
 
 ```
 
-# Build & Run
+## Build & Run
 To Build 
 
 ```
-gradle build -DmainClass=com.google.solutions.ml.api.vision.VisionTextToBigQueryStreaming  
-```
+gradle spotlessApply -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
 
-To Run with default mode: 
-
-```
-gradle run -DmainClass=com.google.solutions.ml.api.vision.VisionTextToBigQueryStreaming -Pargs=" --streaming --project=<project_id> --runner=DataflowRunner --inputFilePattern=gs://<bucket>/*.* --datasetName=<BQ_Dataset> --visionApiProjectId=<project_id_where_vision_api_enabled> --enableStreamingEngine"
-```
-# Creating a Docker Image For Dataflow Dynamic Template
-Create the image using Jib
+gradle build -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
 
 ```
-gradle jib --image=gcr.io/[project_id]/df-vision-api-pipeline:latest -DmainClass=com.google.solutions.ml.api.vision.VisionTextToBigQueryStreaming 
+
+To Run  
+
 ```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \
+ -Pargs="--streaming --project=custom-network-test --runner=DataflowRunner --autoscalingAlgorithm=NONE --numWorkers=50 --maxNumWorkers=50 --workerMachineType=n1-highmem-8  --subscriberId=projects/custom-network-test/subscriptions/log-sub --network=my-custom-network --tableSpec=custom-network-test:network_logs.cluster_model_data --subnetwork=regions/us-central1/subnetworks/custom-network-1  --region=us-central1  --batchFrequency=10 --customGcsTempLocation=gs://df-temp-loc/file_load --usePublicIps=false --clusterQuery=gs://dynamic-template-test/normalized_cluster_data.sql --outlierTableSpec=custom-network-test:network_logs.outlier_data 
+ --windowInterval=5 --tempLocation=gs://df-temp-loc/temp --writeMethod=FILE_LOADS --diskSizeGb=500 --workerDiskType=compute.googleapis.com/projects/custom-network-test/zones/us-central1-b/diskTypes/pd-ssd"
+
+```
+
+## Test 
+
+Publish mock log data at 250k msg/sec
+
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
+ -Pargs="--streaming  --runner=DataflowRunner --project=s3-dlp-experiment --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=50 --maxNumWorkers=50 --qps=250000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=projects/custom-network-test/topics/events --region=us-central1"
+
+``` 
+
+Outlier Test 
+
+```
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 150000,\"rxBytes\": 40000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+```
+Aggr Test
+
+```
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+INFO: row value Row:[2, 2, 2, 12.5, 15, 10, 50]
+
+```
+
+```
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
+
+```
+# Screenshot
+
+Pipeling DAG 
+
+![ref_arch](diagram/dag.png)
+
+Msg Rate
+
+![ref_arch](diagram/msg-rate.png)
+
+Ack Message Rate
+
+![ref_arch](diagram/un-ack.png)
+
+CPU Utilization
+
+![ref_arch](diagram/cpu.png)
+
+System Latency 
+
+![ref_arch](diagram/latency.png)
+
+
+
 
 

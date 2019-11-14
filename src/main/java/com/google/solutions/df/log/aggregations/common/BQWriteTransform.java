@@ -88,20 +88,15 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
                 .to(tableSpec())
                 .useBeamSchema()
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withClustering(
-                    new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
+
       default:
         return row.apply(
             BigQueryIO.<Row>write()
                 .to(tableSpec())
                 .useBeamSchema()
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
-                .withClustering(
-                    new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
     }
   }
 }
