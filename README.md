@@ -1,9 +1,9 @@
-# Network Anamoly Detection Pipeline using Dataflow and  BQ-ML 
+# Network Anomaly Detection Pipeline using Dataflow and  BQ-ML 
 A dataflow streaming pipeline to process large scale network security log data from GCS or PubSub and find outliers using K-Means clustering. In high level, this repo will walk you through following three areas:
 
 1. Aggregate Network logs in N-mins window.
 	- Fixed Window with After Processing time triggers 
-	- Using schema infering to group by subnet and subscriberId and aggregate data. 
+	- Using schema inferring to group by subnet and subscriberId and aggregate data. 
 	- There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
 	- Use N minutes intervals (FILE_LOAD) to batch insert to BQ in a partition & clustered table.  
 2. Create K-Means Clustering model using BQ ML.
@@ -97,7 +97,7 @@ Cluster_model_data table is partition by 'ingestion timestamp' and clustered by 
 --> train data select
 CREATE or REPLACE TABLE network_logs.train_data as (select * from network_logs.cluster_model_data 
 where _PARTITIONDATE between '2019-10-01' AND '2019-10-02';
---> creeate model
+--> create model
 CREATE OR REPLACE model network_logs.log_cluster_2 options(model_type='kmeans', num_clusters=4, standardize_features = true) 
 AS select * except (transaction_time, subscriber_id, number_of_unique_ips, number_of_unique_ports, dst_subnet) 
 from network_logs.train_data;
@@ -167,7 +167,7 @@ group by c.centroid_id);
 
 ````
 gcloud services enable dataflow
-gcloud services enable bigquery
+gcloud services enable big query
 gcloud services enable storage_component
 
 ````
@@ -261,7 +261,7 @@ INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 ```
 ## Screenshot
 
-Pipeling DAG 
+Pipeline DAG 
 
 ![ref_arch](diagram/dag.png)
 
