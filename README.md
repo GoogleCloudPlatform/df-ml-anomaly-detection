@@ -57,7 +57,7 @@ Sample Input Data
 
 ```
 
-Output after aggregation in N-min fixed window and processing time trigger.
+Output after aggregation in N-min fixed window and event time trigger.
 
 1. Added processing timestamp.
 2. Group by destination subnet and subscriberId
