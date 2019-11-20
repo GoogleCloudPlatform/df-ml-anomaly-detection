@@ -35,7 +35,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
@@ -79,9 +79,7 @@ public class SecureLogAggregationPipeline {
                 "Fixed Window",
                 Window.<Row>into(
                         FixedWindows.of(Duration.standardMinutes(options.getWindowInterval())))
-                    .triggering(
-                        AfterProcessingTime.pastFirstElementInPane()
-                            .plusDelayOf(Duration.standardMinutes(options.getWindowInterval())))
+                    .triggering(AfterWatermark.pastEndOfWindow())
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply("Log Aggregation Transform", new LogRowTransform())
