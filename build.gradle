@@ -53,9 +53,9 @@ jib {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
   }
   container {
-    appRoot = '/template/df-secure-log-aggregation'
+    appRoot = '/template/df-log-streaming-template'
     entrypoint = 'INHERIT'
-	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-log-aggregation/resources/java_command_spec.json']
+	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-streaming-template/resources/java_command_spec.json']
 	
   }
 }

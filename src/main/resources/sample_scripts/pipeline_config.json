@@ -1,0 +1,24 @@
+{  
+   "jobName":"'$JOB_NAME'",
+   "parameters":{  
+      "autoScalingAlgorithm":"NONE",
+      "workerMachineType": "n1-standard-8",
+      "numWorkers":"50",
+      "maxNumWorkers":"50",
+      "subscriberId":"projects/custom-network-test/subscriptions/log-sub",
+      "network":"my-custom-network",
+      "tableSpec":"custom-network-test:network_logs.cluster_model_data",
+      "subnetwork":"regions/us-central1/subnetworks/custom-network-1",
+      "region":"us-central-1",
+      "batchFrequency":"5",
+      "customGcsTempLocation":"gs://df-temp-loc/file_load",
+      "usePublicIps":"false",
+      "clusterQuery":"gs://dynamic-template-test/normalized_cluster_data.sql",
+      "outlierTableSpec":"custom-network-test:network_logs.outlier_data",
+      "windowInterval":"2",
+      "tempLocation":"gs://df-temp-loc/temp",
+      "writeMethod":"FILE_LOADS",
+      "diskSizeGb":"500",
+      "workerDiskType":"compute.googleapis.com/projects/custom-network-test/zones/us-central1-b/diskTypes/pd-ssd" 
+ 	}
+}
