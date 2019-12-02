@@ -243,11 +243,11 @@ Schema used for load test:
 	"protocolName": "{{random("tcp","udp","http")}}",
 	"protocolNumber": {{integer(0,1)}}
 }
-
+```
+To Run: 
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=s3-dlp-experiment --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=50 --maxNumWorkers=50 --qps=250000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=projects/custom-network-test/topics/events --region=us-central1"
-
 ``` 
 
 Outlier Test 
