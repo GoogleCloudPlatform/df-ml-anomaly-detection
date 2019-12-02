@@ -226,6 +226,24 @@ gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggrega
 
 Publish mock log data at 250k msg/sec
 
+Schema used for load test: 
+
+```
+{
+    "subscriberId": "{{username()}}",
+    "srcIP": "{{ipv4()}}",
+    "dstIP": "{{subnet()}}",
+    "srcPort": {{integer(1000,5000)}},
+    "dstPort": {{integer(1000,5000)}},
+	"txBytes": {{integer(10,1000)}},
+	"rxBytes": {{integer(10,1000)}},
+	"startTime": {{starttime()}},
+	"endTime": {{endtime()}},
+	"tcpFlag": {{integer(0,65)}},
+	"protocolName": "{{random("tcp","udp","http")}}",
+	"protocolNumber": {{integer(0,1)}}
+}
+
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=s3-dlp-experiment --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=50 --maxNumWorkers=50 --qps=250000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=projects/custom-network-test/topics/events --region=us-central1"
