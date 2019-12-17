@@ -88,6 +88,33 @@ Output after aggregation in N-min fixed window and event time trigger.
 }
 ```
 
+### Aggregation Using Schema Inferring 
+```
+.apply("Group By SubId & DestSubNet",
+   Group.<Row>byFieldNames("subscriberId", "dstSubnet")
+      .aggregateField(
+         "srcIP",
+            new ApproximateUnique.ApproximateUniqueCombineFn<String>(
+                 SAMPLE_SIZE, StringUtf8Coder.of()),
+                    "number_of_unique_ips")
+      .aggregateField(
+          "srcPort",
+              new ApproximateUnique.ApproximateUniqueCombineFn<Integer>(
+                  SAMPLE_SIZE, VarIntCoder.of()),
+                    "number_of_unique_ports")
+      .aggregateField("srcIP", Count.combineFn(), "number_of_records")
+      .aggregateField("txBytes", new AvgCombineFn(), "avg_tx_bytes")
+      .aggregateField("txBytes", Max.ofIntegers(), "max_tx_bytes")
+      .aggregateField("txBytes", Min.ofIntegers(), "min_tx_bytes")
+      .aggregateField("rxBytes", new AvgCombineFn(), "avg_rx_bytes")
+      .aggregateField("rxBytes", Max.ofIntegers(), "max_rx_bytes")
+      .aggregateField("rxBytes", Min.ofIntegers(), "min_rx_bytes")
+      .aggregateField("duration",new AvgCombineFn(), "avg_duration")
+      .aggregateField("duration", Max.ofIntegers(), "max_duration")
+      .aggregateField("duration", Min.ofIntegers(), "min_duration"));
+
+```
+
 ### Create a K-Means model using BQ ML 
 
 Please use the json schema (aggr_log_table_schema.json) to create the table in BQ.
@@ -155,6 +182,7 @@ inner join cluster as c on c.centroid_id = p.centroid_id
 group by c.centroid_id);
 
 ```
+
 
 ### Find the Outliers
 
@@ -230,19 +258,20 @@ Schema used for load test:
 
 ```
 {
-    "subscriberId": "{{username()}}",
-    "srcIP": "{{ipv4()}}",
-    "dstIP": "{{subnet()}}",
-    "srcPort": {{integer(1000,5000)}},
-    "dstPort": {{integer(1000,5000)}},
-	"txBytes": {{integer(10,1000)}},
-	"rxBytes": {{integer(10,1000)}},
-	"startTime": {{starttime()}},
-	"endTime": {{endtime()}},
-	"tcpFlag": {{integer(0,65)}},
-	"protocolName": "{{random("tcp","udp","http")}}",
-	"protocolNumber": {{integer(0,1)}}
+ "subscriberId": "{{username()}}",
+ "srcIP": "{{ipv4()}}",
+ "dstIP": "{{subnet()}}",
+ "srcPort": {{integer(1000,5000)}},
+ "dstPort": {{integer(1000,5000)}},
+ "txBytes": {{integer(10,1000)}},
+ "rxBytes": {{integer(10,1000)}},
+ "startTime": {{starttime()}},
+ "endTime": {{endtime()}},
+ "tcpFlag": {{integer(0,65)}},
+ "protocolName": "{{random("tcp","udp","http")}}",
+ "protocolNumber": {{integer(0,1)}}
 }
+
 ```
 
 To Run: 
@@ -279,7 +308,7 @@ gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcI
 INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 
 ```
-## Screenshot
+## Pipeline Performance at 250k msg/sec
 
 Pipeline DAG 
 
@@ -300,6 +329,17 @@ CPU Utilization
 System Latency 
 
 ![ref_arch](diagram/latency.png)
+
+### K-Means Clustering Using BQ-ML (Model Evaluation)
+
+![ref_arch](diagram/bq-ml-kmeans-1.png)
+
+![ref_arch](diagram/bq-ml-kmeans-2.png)
+
+![ref_arch](diagram/bq-ml-kmeans-3.png)
+
+![ref_arch](diagram/bq-ml-kmeans-4.png)
+
 
 ## To Do
 - Unit test 
