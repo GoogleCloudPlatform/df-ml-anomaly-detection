@@ -54,12 +54,12 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
 
     return input
         .apply(
-            "Find Dst(Nearest Centroid)",
+            "Distance From Nearest Centroid",
             ParDo.of(new FindEuclideanDistance(centroidFeatureVector()))
                 .withSideInputs(centroidFeatureVector()))
         .setRowSchema(Util.outlierSchema)
         .apply(
-            "Find Outliers",
+            "Find Outliers(Z-Score)",
             ParDo.of(new CheckOutlierThreshold(centroidFeatureVector()))
                 .withSideInputs(centroidFeatureVector()))
         .setRowSchema(Util.outlierSchema);

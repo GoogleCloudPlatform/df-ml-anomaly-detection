@@ -64,8 +64,13 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setOutlierTableSpec(String value);
 
-  @Description("GCS Path for the file load")
+  @Description("GCS temp location for BQ write")
   String getCustomGcsTempLocation();
 
   void setCustomGcsTempLocation(String value);
+
+  @Description("input file pattern- json files")
+  String getInputFilePattern();
+
+  void setInputFilePattern(String value);
 }

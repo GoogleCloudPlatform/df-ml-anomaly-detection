@@ -19,10 +19,9 @@ package com.google.solutions.df.log.aggregations;
 import com.google.solutions.df.log.aggregations.common.BQWriteTransform;
 import com.google.solutions.df.log.aggregations.common.CentroidVector;
 import com.google.solutions.df.log.aggregations.common.ClusterDataMapElement;
-import com.google.solutions.df.log.aggregations.common.JsonToRowValidationTransform;
 import com.google.solutions.df.log.aggregations.common.LogRowTransform;
-import com.google.solutions.df.log.aggregations.common.MergeLogAggrMap;
 import com.google.solutions.df.log.aggregations.common.PredictTransform;
+import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
 import java.util.List;
@@ -30,14 +29,9 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
-import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.View;
-import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
@@ -47,6 +41,8 @@ import org.slf4j.LoggerFactory;
 
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
+  /** Default interval for polling files in GCS. */
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 
   public static void main(String args[]) {
 
@@ -64,30 +60,27 @@ public class SecureLogAggregationPipeline {
     // side input as centroid id, radius and other features
     PCollectionView<List<CentroidVector>> centroidFeatures =
         p.apply(
+                "Latest Normalized Data",
                 BigQueryIO.read(new ClusterDataMapElement())
                     .fromQuery(Util.getClusterDetails(options.getClusterQuery()))
                     .usingStandardSql()
                     .withMethod(Method.EXPORT))
-            .apply("Centroid Data As Side Input", View.asList());
-
+            .apply("Centroids Data as Input", View.asList());
+    // read from GCS and pub sub
     PCollection<Row> rows =
         p.apply(
-                "Read LOG Events",
-                PubsubIO.readStrings().fromSubscription(options.getSubscriberId()))
-            .apply("Input Converts To Row", new JsonToRowValidationTransform())
-            .apply(
-                "Fixed Window",
-                Window.<Row>into(
-                        FixedWindows.of(Duration.standardMinutes(options.getWindowInterval())))
-                    .triggering(AfterWatermark.pastEndOfWindow())
-                    .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO))
-            .apply("Log Aggregation Transform", new LogRowTransform())
-            .apply("Merge Aggr Row", MapElements.via(new MergeLogAggrMap()))
+                "Read FlowLog Data",
+                ReadFlowLogTransform.newBuilder()
+                    .setFilePattern(options.getInputFilePattern())
+                    .setPollInterval(DEFAULT_POLL_INTERVAL)
+                    .setSubscriber(options.getSubscriberId())
+                    .setWindowInterval(options.getWindowInterval())
+                    .build())
+            .apply("Feature Extraction", new LogRowTransform())
             .setRowSchema(Util.bqLogSchema);
 
     rows.apply(
-        "File Load to Aggr Table",
+        "Batch to Feature Table",
         BQWriteTransform.newBuilder()
             .setTableSpec(options.getTableSpec())
             .setBatchFrequency(options.getBatchFrequency())
@@ -97,10 +90,10 @@ public class SecureLogAggregationPipeline {
 
     // prediction - let's have some fun
     rows.apply(
-            "Find Outliers",
+            "Anomaly Detection",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())
         .apply(
-            "Streaming Insert To Outliers Table",
+            "Stream To Outlier Table",
             BQWriteTransform.newBuilder()
                 .setTableSpec(options.getOutlierTableSpec())
                 .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
