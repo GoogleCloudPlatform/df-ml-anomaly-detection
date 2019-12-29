@@ -21,10 +21,6 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Watch.Growth;
-import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
-import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
@@ -43,8 +39,6 @@ public abstract class ReadFlowLogTransform extends PTransform<PBegin, PCollectio
 
   public abstract Duration pollInterval();
 
-  public abstract Integer windowInterval();
-
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setSubscriber(String topic);
@@ -52,8 +46,6 @@ public abstract class ReadFlowLogTransform extends PTransform<PBegin, PCollectio
     public abstract Builder setFilePattern(String filePattern);
 
     public abstract Builder setPollInterval(Duration pollInterval);
-
-    public abstract Builder setWindowInterval(Integer interval);
 
     public abstract ReadFlowLogTransform build();
   }
@@ -76,16 +68,6 @@ public abstract class ReadFlowLogTransform extends PTransform<PBegin, PCollectio
     return PCollectionList.of(fileRow)
         .and(pubsubMessage)
         .apply(Flatten.<String>pCollections())
-        .apply(
-            "Trigger",
-            Window.<String>into(FixedWindows.of(Duration.standardSeconds(windowInterval())))
-                .triggering(
-                    AfterWatermark.pastEndOfWindow()
-                        .withEarlyFirings(
-                            AfterProcessingTime.pastFirstElementInPane()
-                                .plusDelayOf(Duration.standardSeconds(windowInterval()))))
-                .discardingFiredPanes()
-                .withAllowedLateness(Duration.ZERO))
         .apply("FlowLogs Convert To Rows", new JsonToRowValidationTransform());
   }
 }

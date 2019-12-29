@@ -33,6 +33,9 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
@@ -43,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
   /** Default interval for polling files in GCS. */
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 
   public static void main(String args[]) {
 
@@ -75,8 +78,14 @@ public class SecureLogAggregationPipeline {
                     .setFilePattern(options.getInputFilePattern())
                     .setPollInterval(DEFAULT_POLL_INTERVAL)
                     .setSubscriber(options.getSubscriberId())
-                    .setWindowInterval(options.getWindowInterval())
                     .build())
+            .apply(
+                "Fixed Window",
+                Window.<Row>into(
+                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
+                    .triggering(AfterWatermark.pastEndOfWindow())
+                    .discardingFiredPanes()
+                    .withAllowedLateness(Duration.ZERO))
             .apply("Feature Extraction", new LogRowTransform())
             .setRowSchema(Util.bqLogSchema);
 

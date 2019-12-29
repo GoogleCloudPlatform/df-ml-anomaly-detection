@@ -8,7 +8,7 @@
                { 
                   "fields":[ 
                      { 
-                        "name":"subscriberId"
+                        "name":"subscriber_id"
                      }
                   ],
                   "primitiveTransformation":{ 
@@ -27,7 +27,7 @@
          }
       }
   	}, 
-	"templateId":"dlp-imei-subcriber-id"
+	"templateId":"dlp-deid-subcriber-id"
 }
 
 

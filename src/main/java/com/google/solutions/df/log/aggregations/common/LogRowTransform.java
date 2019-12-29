@@ -45,7 +45,7 @@ public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Ro
                 .field("duration", Schema.FieldType.INT32))
         .apply("Create Aggr Row", MapElements.via(new LogAggrMapElement()))
         .apply(
-            "Group By SubId & DestSubNet",
+            "Group By SubId & DstSubNet",
             Group.<Row>byFieldNames("subscriberId", "dstSubnet")
                 .aggregateField(
                     "srcIP",

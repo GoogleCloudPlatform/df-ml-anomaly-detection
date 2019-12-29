@@ -27,11 +27,9 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,9 +68,6 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
 
-    final PCollectionView<List<String>> headers =
-        input.apply("Extract Header", ParDo.of(new ExtractHeaders())).apply(View.asList());
-
     return input
         .apply("Convert To DLP Row", ParDo.of(new ConvertToDLPRow()))
         .apply("With Keys", WithKeys.of(UUID.randomUUID().toString()))
@@ -82,23 +77,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         .apply(
             "DLP Tokenization",
             ParDo.of(
-                    new DLPTokenizationDoFn(
-                        projectId(), deidTemplateName(), inspectTemplateName(), headers))
-                .withSideInputs(headers))
+                new DLPTokenizationDoFn(projectId(), deidTemplateName(), inspectTemplateName())))
         .apply("ConvertToBQRow", MapElements.via(new ConvertToBQRow()));
-  }
-
-  public static class ExtractHeaders extends DoFn<Row, String> {
-    @ProcessElement
-    public void processContext(ProcessContext c) {
-      c.element()
-          .getSchema()
-          .getFieldNames()
-          .forEach(
-              header -> {
-                c.output(header.trim());
-              });
-    }
   }
 
   public static class DLPTokenizationDoFn extends DoFn<KV<String, Iterable<Table.Row>>, Table.Row> {
@@ -108,19 +88,14 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     private String deIdentifyTemplateName;
     private String inspectTemplateName;
     private DeidentifyContentRequest.Builder requestBuilder;
-    private PCollectionView<List<String>> headerList;
 
     public DLPTokenizationDoFn(
-        String dlpProjectId,
-        String deIdentifyTemplateName,
-        String inspectTemplateName,
-        PCollectionView<List<String>> headerList) {
+        String dlpProjectId, String deIdentifyTemplateName, String inspectTemplateName) {
       this.dlpProjectId = dlpProjectId;
       this.dlpServiceClient = null;
       this.deIdentifyTemplateName = deIdentifyTemplateName;
       this.inspectTemplateName = inspectTemplateName;
       this.inspectTemplateExist = false;
-      this.headerList = headerList;
     }
 
     @Setup
@@ -162,7 +137,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public void processElement(ProcessContext c) {
 
       List<FieldId> dlpTableHeaders =
-          c.sideInput(headerList).stream()
+          Util.bqLogSchema.getFieldNames().stream()
               .map(header -> FieldId.newBuilder().setName(header).build())
               .collect(Collectors.toList());
 
