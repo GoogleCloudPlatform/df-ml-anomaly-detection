@@ -18,8 +18,12 @@ package com.google.solutions.df.log.aggregations.common;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MergeLogAggrMap extends SimpleFunction<KV<Row, Row>, Row> {
+  private static final Logger LOG = LoggerFactory.getLogger(LogRowTransform.class);
+
   @Override
   public Row apply(KV<Row, Row> input) {
 

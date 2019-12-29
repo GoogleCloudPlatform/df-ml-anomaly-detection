@@ -1,0 +1,34 @@
+{ 
+   "deidentifyTemplate":{ 
+      "displayName":"Config to DeIdentify IMEI Number",
+      "description":"IMEI Number masking transformation",
+      "deidentifyConfig":{ 
+         "recordTransformations":{ 
+            "fieldTransformations":[ 
+               { 
+                  "fields":[ 
+                     { 
+                        "name":"subscriberId"
+                     }
+                  ],
+                  "primitiveTransformation":{ 
+                     "characterMaskConfig":{ 
+                        "charactersToIgnore":[ 
+                           { 
+                              "charactersToSkip":"-"
+                           }
+                        ],
+                        "maskingCharacter":"*",
+                        "numberToMask":"7"
+                     }
+                  }
+               }
+            ]
+         }
+      }
+  	}, 
+	"templateId":"dlp-imei-subcriber-id"
+}
+
+
+

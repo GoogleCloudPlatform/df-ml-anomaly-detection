@@ -21,6 +21,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Watch.Growth;
+import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
@@ -64,32 +65,27 @@ public abstract class ReadFlowLogTransform extends PTransform<PBegin, PCollectio
   @Override
   public PCollection<Row> expand(PBegin input) {
 
-    PCollection<Row> fileRow =
-        input
-            .apply(
-                "ReadFromGCS",
-                TextIO.read().from(filePattern()).watchForNewFiles(pollInterval(), Growth.never()))
-            .apply(
-                "GCS Trigger",
-                Window.<String>into(FixedWindows.of(Duration.standardMinutes(windowInterval())))
-                    .triggering(AfterWatermark.pastEndOfWindow())
-                    .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO))
-            .apply("GCS Converts To Row", new JsonToRowValidationTransform());
+    PCollection<String> fileRow =
+        input.apply(
+            "ReadFromGCS",
+            TextIO.read().from(filePattern()).watchForNewFiles(pollInterval(), Growth.never()));
 
-    PCollection<Row> pubsubMessage =
-        input
-            .apply("ReadFromPubSub", PubsubIO.readStrings().fromSubscription(subscriber()))
-            .apply(
-                "PubSub Trigger",
-                Window.<String>into(FixedWindows.of(Duration.standardMinutes(windowInterval())))
-                    .triggering(AfterWatermark.pastEndOfWindow())
-                    .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO))
-            .apply("PubSub Converts To Row", new JsonToRowValidationTransform());
+    PCollection<String> pubsubMessage =
+        input.apply("ReadFromPubSub", PubsubIO.readStrings().fromSubscription(subscriber()));
 
     return PCollectionList.of(fileRow)
         .and(pubsubMessage)
-        .apply("Flatten Rows", Flatten.<Row>pCollections());
+        .apply(Flatten.<String>pCollections())
+        .apply(
+            "Trigger",
+            Window.<String>into(FixedWindows.of(Duration.standardSeconds(windowInterval())))
+                .triggering(
+                    AfterWatermark.pastEndOfWindow()
+                        .withEarlyFirings(
+                            AfterProcessingTime.pastFirstElementInPane()
+                                .plusDelayOf(Duration.standardSeconds(windowInterval()))))
+                .discardingFiredPanes()
+                .withAllowedLateness(Duration.ZERO))
+        .apply("FlowLogs Convert To Rows", new JsonToRowValidationTransform());
   }
 }

@@ -73,4 +73,20 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
   String getInputFilePattern();
 
   void setInputFilePattern(String value);
+
+  @Description("DLP batch size")
+  @Default.Integer(500)
+  Integer getBatchSize();
+
+  void setBatchSize(Integer value);
+
+  @Description("DLP Inspect Tempalte Name")
+  String getInspectTemplateName();
+
+  void setInspectTemplateName(String value);
+
+  @Description("DLP Deid Tempalte Name")
+  String getDeidTemplateName();
+
+  void setDeidTemplateName(String value);
 }

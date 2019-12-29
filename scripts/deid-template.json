@@ -1,0 +1,31 @@
+{
+  "name": "projects/custom-network-test/deidentifyTemplates/dlp-imei-subcriber-id",
+  "displayName": "Config to DeIdentify IMEI Number",
+  "description": "IMEI Number masking transformation",
+  "createTime": "2019-12-28T14:32:23.847059Z",
+  "updateTime": "2019-12-28T14:32:23.847059Z",
+  "deidentifyConfig": {
+    "recordTransformations": {
+      "fieldTransformations": [
+        {
+          "fields": [
+            {
+              "name": "subscriberId"
+            }
+          ],
+          "primitiveTransformation": {
+            "characterMaskConfig": {
+              "maskingCharacter": "*",
+              "numberToMask": 7,
+              "charactersToIgnore": [
+                {
+                  "charactersToSkip": "-"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
