@@ -19,7 +19,6 @@ package com.google.solutions.df.log.aggregations;
 import com.google.solutions.df.log.aggregations.common.BQWriteTransform;
 import com.google.solutions.df.log.aggregations.common.CentroidVector;
 import com.google.solutions.df.log.aggregations.common.ClusterDataMapElement;
-import com.google.solutions.df.log.aggregations.common.DLPTransform;
 import com.google.solutions.df.log.aggregations.common.LogRowTransform;
 import com.google.solutions.df.log.aggregations.common.PredictTransform;
 import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
@@ -89,18 +88,18 @@ public class SecureLogAggregationPipeline {
             .apply("Feature Extraction", new LogRowTransform())
             .setRowSchema(Util.bqLogSchema);
 
-    PCollection<Row> maskedRows =
-        rows.apply(
-                "DLP Transformation",
-                DLPTransform.newBuilder()
-                    .setBatchSize(options.getBatchSize())
-                    .setDeidTemplateName(options.getDeidTemplateName())
-                    .setInspectTemplateName(options.getInspectTemplateName())
-                    .setProjectId(options.getProject())
-                    .build())
-            .setRowSchema(Util.bqLogSchema);
+    //    PCollection<Row> maskedRows =
+    //        rows.apply(
+    //                "DLP Transformation",
+    //                DLPTransform.newBuilder()
+    //                    .setBatchSize(options.getBatchSize())
+    //                    .setDeidTemplateName(options.getDeidTemplateName())
+    //                    .setInspectTemplateName(options.getInspectTemplateName())
+    //                    .setProjectId(options.getProject())
+    //                    .build())
+    //            .setRowSchema(Util.bqLogSchema);
 
-    maskedRows.apply(
+    rows.apply(
         "Batch to Feature Table",
         BQWriteTransform.newBuilder()
             .setTableSpec(options.getTableSpec())
