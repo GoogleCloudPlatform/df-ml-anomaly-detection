@@ -34,7 +34,7 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PR
 gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role roles/storage.objectAdmin
 ```
 ### Deploy the solution 
-This script creates all the resourced required for the demo. For example: PubSub topic, subscriptions, Big Query Tables with normalized cluster data populated and dataflow pipeline.
+The cloud build demo script creates all the resources required for the demo. For example: PubSub topic, subscriptions, Big Query Tables with normalized cluster data populated and dataflow pipeline.
 
 ```export DATASET=<var>bq-dataset-name</var>
 export SUBSCRIPTION_ID=<var>subscription_id</var>
@@ -43,13 +43,13 @@ export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
 gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitutions _DATASET=$DATASET,_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},_TOPIC_ID=${TOPIC_ID},
 _API_KEY=$(gcloud auth print-access-token)
 ```
-
 ### Generate some mock data (1k events/sec) in PubSub topic
+
 ```gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
 ```
-
 ### Publish an outlier with an unusal tx & rx bytes
+
 ```gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
 
