@@ -39,7 +39,7 @@ OUTLIER_TABLE_SPEC="${PROJECT_ID}:${BQ_DATASET}.outlier_data"
 DEID_TEMPLATE_NAME="projects/${PROJECT_ID}/deidentifyTemplates/deid-template"
 SUBSCRIPTION_ID="projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_ID}"
 BATCH_SIZE="100"
-INPUT_FILE_PATTERN="gs://wesp-flow-logs/*.json"
+INPUT_FILE_PATTERN="gs://wesp-flow-logs/wesp_flow_*.json"
 # publicly hosted image
 DYNAMIC_TEMPLATE_BUCKET_SPEC="gs://wesp-flow-logs/dynamic_template_secure_log_aggr_template.json"
 JOB_NAME="netflow-anomaly-detection-`date +%Y%m%d-%H%M%S-%N`"

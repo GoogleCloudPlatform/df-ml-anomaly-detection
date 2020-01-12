@@ -1,27 +1,72 @@
-# Anomaly Detection Using Machine Learning To Predict Cyber Security Threat 
-A dataflow streaming pipeline to process network flow log from GCS and/or PubSub to find outliers in real time by using a K-Means Clustering Model created from BQ-ML. In high level, this repo can be used to demo following areas:
+# Anomaly Detection Solution with ML To Predict Cyber Security Threat 
+Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights a ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
-1. Streaming Analytics at Scale using Dataflow (Feature Extraction)
-	- Fixed Window with After Processing time triggers 
-	- Using schema inferring to group by subnet and subscriberId and aggregate data. 
-	- There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
-	- Use N minutes intervals (FILE_LOAD) to batch insert to BQ in a partition & clustered table.  
-2. K-Means Clustering model using BQ ML.
-	- Using BQ ML query to create K-Means model. This is done using stored procedure and schedule query in BQ.
-	- Normalized the data by finding STD DEV for each cluster to help with outlier detection. 
-3. Anomaly detection in near real time (Online Prediction)
-	- Find Z-Score and check if it's 2 STD DEV above the mean.
-	- Use dataflow to calculate nearest distance from centroid and score between sample and centroid. 
-	- Streaming insert to BQ table if outliers found.
+A dataflow streaming pipeline to process netflow log from GCS and/or PubSub to find outliers in real time. This solutio also K-Means Clustering Model created by using BQ-ML. In high level, this repo can be used to demo following 3 use cases:
+
+1. Streaming Analytics at Scale by using Dataflow/Beam. (Feature Extraction & Online Prediction)
+2. Making Machine Learning easy by using BQ ML K-Means Clustering model.
+3. Protecting sensitive information e.g:"IMSI" using Cloud DLP
+
  
 
-## Reference Architecture
+## End to end serverless architecture to innovate 
 
-![ref_arch](diagram/ref-arch.png)
+![ref_arch](diagram/ref_arch.png)
 
-## Quickly Setup a Customer Demo
-   
-##  How It works?
+## Setup a Customer Demo
+### Clone the Repo 
+```
+glogin
+
+git clone sso://user/masudhasan/df-network-log-streaming
+
+```
+### Enable APIs
+```
+gcloud services enable bigquery
+gcloud services enable storage_component
+gcloud services enable dataflow
+gcloud services enable cloudbuild.googleapis.com
+
+```
+### Access to Cloud Build Service Account 
+
+```
+export PROJECT_ID=$(gcloud config get-value project)
+
+export PROJECT_NUMBER=$(gcloud projects list --filter=${PROJECT_ID} --format="value(PROJECT_NUMBER)")
+ 
+gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role roles/editor
+ 
+gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role roles/storage.objectAdmin
+
+```
+### Deploy the solution 
+This script creates all the resourced required for the demo. For example: PubSub topic, subscriptions, Big Query Tables with normalized cluster data populated and dataflow pipeline.
+
+```
+-- replace all the variables with the name you like before executing the cloud build script.
+
+export DATASET=<var>bq-dataset-name</var>
+export SUBSCRIPTION_ID=<var>subscription_id</var>
+export TOPIC_ID=<var>topic_id</var>
+export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
+
+gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitutions _DATASET=$DATASET,_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},_TOPIC_ID=${TOPIC_ID},_API_KEY=$(gcloud auth print-access-token)
+
+```
+
+### Generate some mock data (1k events/sec) in PubSub topic
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
+ -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
+
+```
+### Publish an Outlier with an unusal tx & rx bytes
+```
+gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+```
+##  Learn More 
 
 ### Example input log data and output after aggregation
 
@@ -312,7 +357,7 @@ INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 ```
 ## Pipeline Performance at 250k msg/sec
 
-Pipeline DAG 
+Pipeline DAG (ToDo: change with updated pipeline DAG)
 
 ![ref_arch](diagram/dag.png)
 
@@ -346,7 +391,7 @@ System Latency
 ## To Do
 - Unit test 
 - Take out references
-- Flex Template Integration -Jib
+- Open Source
 
 
 
