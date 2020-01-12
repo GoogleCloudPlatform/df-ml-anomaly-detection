@@ -45,16 +45,18 @@ _API_KEY=$(gcloud auth print-access-token)
 ```
 
 ### Generate some mock data (1k events/sec) in PubSub topic
-````gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
+```gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
-````
+```
+
 ### Publish an outlier with an unusal tx & rx bytes
 ```gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
 
 ### Clean up
 Please stop/cancel the dataflow pipeline manually from the UI. 
-##  Learn More 
+
+##  Learn More About This Solution
 
 ### Example input log data and output after aggregation
 
