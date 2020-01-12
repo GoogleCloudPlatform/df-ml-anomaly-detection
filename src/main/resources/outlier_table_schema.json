@@ -14,64 +14,56 @@
     "name": "dst_subnet", 
     "type": "STRING"
   }, 
-  
   {
-         
-        "name": "number_of_unique_ips", 
-        "type": "INTEGER"
-    }, 
-    {
-         
-        "name": "number_of_unique_ports", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "number_of_records", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "max_tx_bytes", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "min_tx_bytes", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "avg_tx_bytes", 
-        "type": "FLOAT"
-      }, 
-      {
-        "name": "max_rx_bytes", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "min_rx_bytes", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "avg_rx_bytes", 
-        "type": "FLOAT"
-      }, 
-      {
-        "name": "max_duration", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "min_duration", 
-        "type": "INTEGER"
-      }, 
-      {
-        "name": "avg_duration", 
-        "type": "FLOAT"
-      },
-      {
-        "name": "centroid_id", 
-        "type": "INTEGER"
-      }
-     
-      
-      
-     
-  
+    "name": "number_of_unique_ips", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "number_of_unique_ports", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "number_of_records", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "max_tx_bytes", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "min_tx_bytes", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "avg_tx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "max_rx_bytes", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "min_rx_bytes", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "avg_rx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "max_duration", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "min_duration", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "avg_duration", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "centroid_id", 
+    "type": "INTEGER"
+  }
 ]
