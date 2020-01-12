@@ -44,13 +44,13 @@ gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitu
 _API_KEY=$(gcloud auth print-access-token)
 ```
 ### Generate some mock data (1k events/sec) in PubSub topic
-
-```gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
 ```
 ### Publish an outlier with an unusal tx & rx bytes
-
-```gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+```
+gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
 
 ### Clean up
@@ -92,8 +92,7 @@ Sample Input Data
 \"protocolNumber\": 0
 }
 ```
-
-Output after aggregation in N-min fixed window and event time trigger.
+### Feature Extraction After Aggregation
 
 1. Added processing timestamp.
 2. Group by destination subnet and subscriberId
@@ -223,7 +222,8 @@ group by c.centroid_id);
 
 ## Before Start (Optional Step if Cloud Build Script is NOT used)
 
-````gcloud services enable dataflow
+````
+gcloud services enable dataflow
 gcloud services enable big query
 gcloud services enable storage_component
 ````
@@ -232,13 +232,15 @@ gcloud services enable storage_component
 
 Dataset
 
-```bq --location=US mk -d \ 
+```
+bq --location=US mk -d \ 
 --description "Network Logs Dataset \ 
 network_logs
 ```
 Aggregation Data Table 
 
-```bq mk -t --schema aggr_log_table_schema.json  \
+```
+bq mk -t --schema aggr_log_table_schema.json  \
 --time_partitioning_type=DAY \
 --clustering_fields=dst_subnet, subscriber_id \
 --description "Network Log Partition Table" \
@@ -248,7 +250,8 @@ custom-network-test:network_logs.cluster_model_data
 
 Outlier Table 
 
-```bq mk -t --schema outlier_table_schema.json \
+```
+bq mk -t --schema outlier_table_schema.json \
 --label myorg:prod \
 custom-network-test:network_logs.outlier_data 
 ```
@@ -256,13 +259,15 @@ custom-network-test:network_logs.outlier_data
 ## Build & Run
 To Build 
 
-```gradle spotlessApply -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
+```
+gradle spotlessApply -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
 gradle build -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
 ```
 
 To Run  (To Do: Take out project reference) 
 
-```gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \
  -Pargs="--streaming --project=custom-network-test --runner=DataflowRunner --autoscalingAlgorithm=NONE --numWorkers=50 --maxNumWorkers=50 --workerMachineType=n1-highmem-8  --subscriberId=projects/custom-network-test/subscriptions/log-sub --network=my-custom-network --tableSpec=custom-network-test:network_logs.cluster_model_data --subnetwork=regions/us-central1/subnetworks/custom-network-1  --region=us-central1  --batchFrequency=10 --customGcsTempLocation=gs://df-temp-loc/file_load --usePublicIps=false --clusterQuery=gs://dynamic-template-test/normalized_cluster_data.sql
 --outlierTableSpec=custom-network-test:network_logs.outlier_data 
 --windowInterval=5 --tempLocation=gs://df-temp-loc/temp --writeMethod=FILE_LOADS --diskSizeGb=500 --workerDiskType=compute.googleapis.com/projects/custom-network-test/zones/us-central1-b/diskTypes/pd-ssd"
@@ -274,7 +279,8 @@ Publish mock log data at 250k msg/sec
 
 Schema used for load test: 
 
-```{
+```
+{
  "subscriberId": "{{username()}}",
  "srcIP": "{{ipv4()}}",
  "dstIP": "{{subnet()}}",
@@ -292,27 +298,27 @@ Schema used for load test:
 
 To Run: 
 
-```gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
  -Pargs="--streaming  --runner=DataflowRunner --project=s3-dlp-experiment --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=50 --maxNumWorkers=50 --qps=250000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=projects/custom-network-test/topics/events --region=us-central1"
 ``` 
 
 Outlier Test 
 ```
 gcloud pubsub topics publish events --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 150000,\"rxBytes\": 40000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
-```
-```
 gcloud pubsub topics publish events --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
 
 Feature Extraction Test
 
-```gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
-```gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 OUTPUT: INFO: row value Row:[2, 2, 2, 12.5, 15, 10, 50]
 ```
 
-```gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+```
+gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 OUTPUT INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 ```
