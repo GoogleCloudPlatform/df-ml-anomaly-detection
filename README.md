@@ -1,15 +1,15 @@
-# Network Anomaly Detection Pipeline using Dataflow and  BQ-ML 
-A dataflow streaming pipeline to process large scale network security log data from GCS or PubSub and find outliers using K-Means clustering. In high level, this repo will walk you through following three areas:
+# Anomaly Detection Using Machine Learning To Predict Cyber Security Threat 
+A dataflow streaming pipeline to process network flow log from GCS and/or PubSub to find outliers in real time by using a K-Means Clustering Model created from BQ-ML. In high level, this repo can be used to demo following areas:
 
-1. Aggregate Network logs in N-mins window.
+1. Streaming Analytics at Scale using Dataflow (Feature Extraction)
 	- Fixed Window with After Processing time triggers 
 	- Using schema inferring to group by subnet and subscriberId and aggregate data. 
 	- There are 4 types of aggregations (Min, Max, Avg and  Approximate Unique Count )
 	- Use N minutes intervals (FILE_LOAD) to batch insert to BQ in a partition & clustered table.  
-2. Create K-Means Clustering model using BQ ML.
+2. K-Means Clustering model using BQ ML.
 	- Using BQ ML query to create K-Means model. This is done using stored procedure and schedule query in BQ.
 	- Normalized the data by finding STD DEV for each cluster to help with outlier detection. 
-3. Prediction (Batch/Online)
+3. Anomaly detection in near real time (Online Prediction)
 	- Find Z-Score and check if it's 2 STD DEV above the mean.
 	- Use dataflow to calculate nearest distance from centroid and score between sample and centroid. 
 	- Streaming insert to BQ table if outliers found.
@@ -19,6 +19,8 @@ A dataflow streaming pipeline to process large scale network security log data f
 
 ![ref_arch](diagram/ref-arch.png)
 
+## Quickly Setup a Customer Demo
+   
 ##  How It works?
 
 ### Example input log data and output after aggregation
