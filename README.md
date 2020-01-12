@@ -1,13 +1,14 @@
 # Anomaly Detection Solution with ML To Predict Cyber Security Threat 
+## Solution Summary
 Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights a ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
-A dataflow streaming pipeline to process netflow log from GCS and/or PubSub to find outliers in real time. This solutio also K-Means Clustering Model created by using BQ-ML. In high level, this repo can be used to demo following 3 use cases:
-
+This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in real time.   
+This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
+In summary, you can use this solution to demo following 3 use cases in <b>Smart Analytics/AI and Security solution pillar:</b>
 
 1. <b>Streaming Analytics at Scale by using Dataflow/Beam. (Feature Extraction & Online Prediction)</b>
-2. <b>Making Machine Learning easy by using BQ ML K-Means Clustering model.</b>
-3. <b>Protecting sensitive information e.g:"IMSI" using Cloud DLP </b>
-
+2. <b>Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering</b>
+3. <b>Protecting sensitive information e.g:"IMSI" by using Cloud DLP crypto based tokenization</b>
 
 ## End to end serverless architecture to innovate 
 ![ref_arch](diagram/ref-arch.png)
