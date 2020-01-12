@@ -1,0 +1,50 @@
+[
+  {
+    "name": "centroid_id", 
+    "type": "INTEGER"
+  }, 
+  {
+    "name": "normalized_dest", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "number_of_records", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "max_tx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "min_tx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "avg_tx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "max_rx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "min_rx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "avg_rx_bytes", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "avg_duration", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "max_duration", 
+    "type": "FLOAT"
+  }, 
+  {
+    "name": "min_duration", 
+    "type": "FLOAT"
+  }
+]
