@@ -44,7 +44,7 @@ INPUT_FILE_PATTERN="gs://wesp-flow-logs/wesp_flow_*.json"
 DYNAMIC_TEMPLATE_BUCKET_SPEC="gs://wesp-flow-logs/dynamic_template_secure_log_aggr_template.json"
 JOB_NAME="netflow-anomaly-detection-`date +%Y%m%d-%H%M%S-%N`"
 echo $JOB_NAME
-GCS_STAGING_LOCATION=gs://dynamic-template/log
+GCS_STAGING_LOCATION="gs://${DATA_STORAGE_BUCKET}/log"
 TEMP_LOCATION="gs://${DATA_STORAGE_BUCKET}/temp"
 PARAMETERS_CONFIG='{  
    "jobName":"'$JOB_NAME'",
