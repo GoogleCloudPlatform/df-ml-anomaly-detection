@@ -12,28 +12,28 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 steps:
- # - name: gcr.io/cloud-builders/gsutil
- #   args: ['mb', '-c', 'standard', '-l','us-central1', 'gs://${_DATA_STORAGE_BUCKET}']
- # - name: gcr.io/cloud-builders/gcloud
- #   args: ['pubsub', 'topics', 'create', '${_TOPIC_ID}']
- # - name: gcr.io/cloud-builders/gcloud
- #   args: ['pubsub', 'subscriptions', 'create', '${_SUBSCRIPTION_ID}', '--topic', '${_TOPIC_ID}']
- # - name: gcr.io/cloud-builders/gsutil
- #   args: ['-m', 'cp', 'gs://wesp-flow-logs/*.*', '.']
- # - name: gcr.io/cloud-solutions-images/bq
- #   args: ['mk', '-d', '--description', 'Network Flow Log Dataset', '--location=US', '${_DATASET}']
- # - name: gcr.io/cloud-solutions-images/bq
- #   args: ['mk', '-t', '--description', 'Feature Extraction PT', '--schema','aggr_log_table_schema.json',   '--time_partitioning_type=DAY', '--clustering_fields=dst_subnet,subscriber_id', '${PROJECT_ID}:${_DATASET}.cluster_model_data']
- # - name: gcr.io/cloud-solutions-images/bq
- #   args: ['mk', '-t', '--description', 'Outlier Table', '--schema','outlier_table_schema.json', '${PROJECT_ID}:${_DATASET}.outlier_data']
- # - name: gcr.io/cloud-solutions-images/bq
- #   args: ['mk', '-t', '--description', 'Normalized Cluster Data Table', '--schema','normalized_centroid_data_schema.json', '${PROJECT_ID}:${_DATASET}.normalized_centroid_data']
- # - name: gcr.io/cloud-solutions-images/bq
- #   args: ['load', '--source_format=NEWLINE_DELIMITED_JSON','${PROJECT_ID}:${_DATASET}.normalized_centroid_data', 'normalized_cluster_data.json', 'normalized_centroid_data_schema.json']
- # - name: 'gcr.io/cloud-builders/docker'
- #   entrypoint: 'bash'
- #   args: ['-c', 'echo "SELECT * FROM \`${PROJECT_ID}.${_DATASET}.normalized_centroid_data\`" > normalized_cluster_data.sql']
- # - name: gcr.io/cloud-builders/gsutil
- #   args: ['cp', 'normalized_cluster_data.sql', 'gs://${_DATA_STORAGE_BUCKET}/']
+ - name: gcr.io/cloud-builders/gsutil
+   args: ['mb', '-c', 'standard', '-l','us-central1', 'gs://${_DATA_STORAGE_BUCKET}']
+ - name: gcr.io/cloud-builders/gcloud
+   args: ['pubsub', 'topics', 'create', '${_TOPIC_ID}']
+ - name: gcr.io/cloud-builders/gcloud
+   args: ['pubsub', 'subscriptions', 'create', '${_SUBSCRIPTION_ID}', '--topic', '${_TOPIC_ID}']
+ - name: gcr.io/cloud-builders/gsutil
+   args: ['-m', 'cp', 'gs://wesp-flow-logs/*.*', '.']
+ - name: gcr.io/cloud-solutions-images/bq
+   args: ['mk', '-d', '--description', 'Network Flow Log Dataset', '--location=US', '${_DATASET}']
+ - name: gcr.io/cloud-solutions-images/bq
+   args: ['mk', '-t', '--description', 'Feature Extraction PT', '--schema','aggr_log_table_schema.json',   '--time_partitioning_type=DAY', '--clustering_fields=dst_subnet,subscriber_id', '${PROJECT_ID}:${_DATASET}.cluster_model_data']
+ - name: gcr.io/cloud-solutions-images/bq
+   args: ['mk', '-t', '--description', 'Outlier Table', '--schema','outlier_table_schema.json', '${PROJECT_ID}:${_DATASET}.outlier_data']
+ - name: gcr.io/cloud-solutions-images/bq
+   args: ['mk', '-t', '--description', 'Normalized Cluster Data Table', '--schema','normalized_centroid_data_schema.json', '${PROJECT_ID}:${_DATASET}.normalized_centroid_data']
+ - name: gcr.io/cloud-solutions-images/bq
+   args: ['load', '--source_format=NEWLINE_DELIMITED_JSON','${PROJECT_ID}:${_DATASET}.normalized_centroid_data', 'normalized_cluster_data.json', 'normalized_centroid_data_schema.json']
+ - name: 'gcr.io/cloud-builders/docker'
+   entrypoint: 'bash'
+   args: ['-c', 'echo "SELECT * FROM \`${PROJECT_ID}.${_DATASET}.normalized_centroid_data\`" > normalized_cluster_data.sql']
+ - name: gcr.io/cloud-builders/gsutil
+   args: ['cp', 'normalized_cluster_data.sql', 'gs://${_DATA_STORAGE_BUCKET}/']
  - name: 'ubuntu'
    args: ['bash', '-c','apt-get -q update && apt-get install -qqy curl; sh df-template.sh ${PROJECT_ID} ${_SUBSCRIPTION_ID} ${_DATASET} ${_DATA_STORAGE_BUCKET} ${_API_KEY}']
