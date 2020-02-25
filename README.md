@@ -15,10 +15,6 @@ In summary, you can use this solution to demo following 3 use cases in <b>Smart 
 
 ## Setup a Customer Demo
 
-### Clone the Repo 
-
-```git clone sso://user/masudhasan/df-network-log-streaming
-```
 ### Enable APIs
 
 ```gcloud services enable bigquery
