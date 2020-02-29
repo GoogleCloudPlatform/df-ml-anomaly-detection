@@ -366,11 +366,14 @@ OUTPUT INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 
 Pipeline DAG (ToDo: change with updated pipeline DAG)
 
-![dag](diagram/dag.png)
+![dag](diagram/dag_1.png)
+![dag](diagram/dag_2.png)
 
 Msg Rate
 
 ![msg_rate_](diagram/msg-rate.png)
+
+![dag](diagram/load_dag.png)
 
 Ack Message Rate
 
