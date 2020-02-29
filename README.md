@@ -6,9 +6,9 @@ This solution implements the reference architecture highlighted below. You will 
 This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
 In summary, you can use this solution to demo following 3 use cases in <b>Smart Analytics/AI and Security solution pillar:</b>
 
-1. <b>Streaming Analytics at Scale by using Dataflow/Beam. (Feature Extraction & Online Prediction)</b>
-2. <b>Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering</b>
-3. <b>Protecting sensitive information e.g:"IMSI" by using Cloud DLP crypto based tokenization</b>
+1.  Streaming Analytics at Scale by using Dataflow/Beam. (Feature Extraction & Online Prediction).  
+2. Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering.  
+3. Protecting sensitive information e.g:"IMSI (international mobile subscriber identity)" by using Cloud DLP crypto based tokenization.  
 
 ## End to end serverless architecture
 
@@ -394,9 +394,11 @@ System Latency
 
 ![ref_arch](diagram/bq-ml-kmeans-4.png)
 
-### DLP Tokenization for. IMSI Number
  
+### DLP De-Identification for IMSI number (Crypto Based Tokenizattion)
 
+
+![ref_arch](diagram/dlp_imsi.png)
 
 
 
