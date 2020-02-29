@@ -44,7 +44,12 @@ export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
 
 #### Trigger Cloud Build Script
 
-```gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitutions _DATASET=$DATASET,_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},_TOPIC_ID=${TOPIC_ID},
+```
+gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml  --substitutions  \
+ _DATASET=$DATASET, \
+_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET, \ 
+_SUBSCRIPTION_ID=${SUBSCRIPTION_ID}, \
+_TOPIC_ID=${TOPIC_ID} , \ 
 _API_KEY=$(gcloud auth print-access-token)
 ```
 
