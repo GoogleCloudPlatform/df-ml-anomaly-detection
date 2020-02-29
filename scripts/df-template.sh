@@ -26,7 +26,20 @@ OUTLIER_TABLE_SPEC="${PROJECT_ID}:${BQ_DATASET}.outlier_data"
 DEID_TEMPLATE_NAME="projects/${PROJECT_ID}/deidentifyTemplates/deid-template"
 SUBSCRIPTION_ID="projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_ID}"
 BATCH_SIZE="100"
-INPUT_FILE_PATTERN="gs://next-demo-2020-net-flow-log/wesp-flow-logs/wesp_flow_*.json"
+INPUT_FILE_PATTERN="gs://${DATA_STORAGE_BUCKET}/flow_log*.json"
+## dlp config 
+DEID_CONFIG="@deid_imei_number.json"
+DEID_TEMPLATE_OUTPUT="deid-template.json"
+DLP_API_ROOT_URL="https://dlp.googleapis.com"
+DEID_TEMPLATE_API="${DLP_API_ROOT_URL}/v2/projects/${PROJECT_ID}/deidentifyTemplates"
+curl -X POST -H "Content-Type: application/json" \
+ -H "Authorization: Bearer ${API_KEY}" \
+ "${DEID_TEMPLATE_API}"`` \
+ -d "${DEID_CONFIG}"\
+ -o "${DEID_TEMPLATE_OUTPUT}"
+more ${DEID_TEMPLATE_OUTPUT}
+DEID_TEMPLATE_NAME=$(jq -c '.name' ${DEID_TEMPLATE_OUTPUT})
+
 # publicly hosted image
 DYNAMIC_TEMPLATE_BUCKET_SPEC="gs://wesp-flow-logs/dynamic_template_secure_log_aggr_template.json"
 JOB_NAME="netflow-anomaly-detection-`date +%Y%m%d-%H%M%S-%N`"
@@ -39,9 +52,9 @@ PARAMETERS_CONFIG='{
      	 "streaming": "true",
 	 "enableStreamingEngine": "false",
 	 "autoscalingAlgorithm": "NONE",
-    	 "workerMachineType": "n1-standard-8",
-     	 "numWorkers": "50",
-    	 "maxNumWorkers": "50",
+    	 "workerMachineType": "n1-standard-4",
+     	 "numWorkers": "5",
+    	 "maxNumWorkers": "5",
 	 "region": "us-central1",
       	 "tableSpec":"'$TABLE_SPEC'",
 	  "batchFrequency":"2",
@@ -54,6 +67,7 @@ PARAMETERS_CONFIG='{
 	  "batchSize":"'$BATCH_SIZE'",
 	  "customGcsTempLocation":"'$TEMP_LOCATION'",
 	  "inputFilePattern":"'$INPUT_FILE_PATTERN'" ,
+	  "deidTemplateName": '$DEID_TEMPLATE_NAME'
 	   
 	}
 }'

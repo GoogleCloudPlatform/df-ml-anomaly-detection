@@ -35,5 +35,7 @@ steps:
    args: ['-c', 'echo "SELECT * FROM \`${PROJECT_ID}.${_DATASET}.normalized_centroid_data\`" > normalized_cluster_data.sql']
  - name: gcr.io/cloud-builders/gsutil
    args: ['cp', 'normalized_cluster_data.sql', 'gs://${_DATA_STORAGE_BUCKET}/']
+ - name: gcr.io/cloud-builders/gsutil
+    args: ['cp', 'gs://df-ml-anomaly-detection-mock-data/*', 'gs://${_DATA_STORAGE_BUCKET}/']
  - name: 'ubuntu'
    args: ['bash', '-c','apt-get -q update && apt-get install -qqy curl; sh df-template.sh ${PROJECT_ID} ${_SUBSCRIPTION_ID} ${_DATASET} ${_DATA_STORAGE_BUCKET} ${_API_KEY}']

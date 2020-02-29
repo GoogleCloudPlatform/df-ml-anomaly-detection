@@ -1,5 +1,5 @@
 {
- "subscriberId": "{{username()}}",
+ "subscriberId": "{{long(1111111111,9999999999)}}",
  "srcIP": "{{ipv4()}}",
  "dstIP": "{{subnet()}}",
  "srcPort": {{integer(1000,5000)}},
@@ -12,6 +12,5 @@
  "protocolName": "{{random("tcp","udp","http")}}",
  "protocolNumber": {{integer(0,1)}}
 }
-
 
 

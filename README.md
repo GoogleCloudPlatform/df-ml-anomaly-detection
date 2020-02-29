@@ -10,10 +10,14 @@ In summary, you can use this solution to demo following 3 use cases in <b>Smart 
 2. <b>Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering</b>
 3. <b>Protecting sensitive information e.g:"IMSI" by using Cloud DLP crypto based tokenization</b>
 
-## End to end serverless architecture to innovate 
-![ref_arch](diagram/ref-arch.png)
+## End to end serverless architecture
 
-## Setup a Customer Demo
+
+![ref_arch](diagram/ref_arch.png)
+
+## Quick Start
+
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/GoogleCloudPlatform/df-ml-anomaly-detection.git)
 
 ### Enable APIs
 
@@ -21,6 +25,7 @@ In summary, you can use this solution to demo following 3 use cases in <b>Smart 
 gcloud services enable storage_component
 gcloud services enable dataflow
 gcloud services enable cloudbuild.googleapis.com
+gcloud config set project <project_id>
 ```
 ### Access to Cloud Build Service Account 
 
@@ -29,20 +34,25 @@ export PROJECT_NUMBER=$(gcloud projects list --filter=${PROJECT_ID} --format="va
 gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role roles/editor
 gcloud projects add-iam-policy-binding ${PROJECT_ID} --member serviceAccount:$PROJECT_NUMBER@cloudbuild.gserviceaccount.com --role roles/storage.objectAdmin
 ```
-### Deploy the solution 
-The cloud build demo script creates all the resources required for the demo. For example: PubSub topic, subscriptions, Big Query Tables with normalized cluster data populated and dataflow pipeline.
 
-```export DATASET=<var>bq-dataset-name</var>
+#### Export Required Parameters 
+```
+export DATASET=<var>bq-dataset-name</var>
 export SUBSCRIPTION_ID=<var>subscription_id</var>
 export TOPIC_ID=<var>topic_id</var>
 export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
-gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitutions _DATASET=$DATASET,_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},_TOPIC_ID=${TOPIC_ID},
+```
+
+#### Trigger Cloud Build Script
+
+```gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml --substitutions _DATASET=$DATASET,_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},_TOPIC_ID=${TOPIC_ID},
 _API_KEY=$(gcloud auth print-access-token)
 ```
+
 ### Generate some mock data (1k events/sec) in PubSub topic
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
- -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://dynamic-template-test/wesp_json_schema.json --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
+ -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/netflow_log_json_schema.json  --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
 ```
 ### Publish an outlier with an unusal tx & rx bytes
 ```
@@ -233,6 +243,7 @@ bq --location=US mk -d \
 --description "Network Logs Dataset \ 
 <dataset_name>
 ```
+
 Aggregation Data Table 
 
 ```
@@ -263,11 +274,24 @@ gradle build -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggre
 To Run  
 
 ```
-gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \
- -Pargs="--streaming --project=<project_id> --runner=DataflowRunner --autoscalingAlgorithm=NONE \ 
- --numWorkers=5 --maxNumWorkers=5 --workerMachineType=n1-highmem-8 \  --subscriberId=projects/<project_id>subscriptions/<sub_id> --tableSpec=<project>:<dataset_name>.cluster_model_data  --region=us-central1  --batchFrequency=10 --customGcsTempLocation=gs://<bucket_name>/file_load  --clusterQuery=gs://<bucket_name>/normalized_cluster_data.sql
---outlierTableSpec=<project>:<dataset_name>outlier_data 
---windowInterval=5 --tempLocation=gs://<bucket_name>/temp --writeMethod=FILE_LOADS --diskSizeGb=500 --workerDiskType=compute.googleapis.com/projects/<project_id>/zones/us-central1-b/diskTypes/pd-ssd"
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \ -Pargs="--streaming --project=<project_id> \ 
+--runner=DataflowRunner 
+--autoscalingAlgorithm=NONE \ 
+--numWorkers=5 \
+--maxNumWorkers=5 \
+--workerMachineType=n1-highmem-8  \
+--subscriberId=projects/<project_id>subscriptions/<sub_id> \
+--tableSpec=<project>:<dataset_name>.cluster_model_data \ 
+--region=us-central1  \ 
+--batchFrequency=10 \ 
+--customGcsTempLocation=gs://<bucket_name>/file_load \
+--clusterQuery=gs://<bucket_name>/normalized_cluster_data.sql \ 
+--outlierTableSpec=<project>:<dataset_name>outlier_data \
+--windowInterval=5 \
+--tempLocation=gs://<bucket_name>/temp \ 
+--writeMethod=FILE_LOADS \ 
+--diskSizeGb=50 \ 
+--workerDiskType=compute.googleapis.com/projects/<project_id>/zones/us-central1-b/diskTypes/pd-ssd"
 ```
 
 ## Test 
@@ -278,7 +302,7 @@ Schema used for load test:
 
 ```
 {
- "subscriberId": "{{username()}}",
+ "subscriberId": "{{long(1111111111,9999999999)}}",
  "srcIP": "{{ipv4()}}",
  "dstIP": "{{subnet()}}",
  "srcPort": {{integer(1000,5000)}},
@@ -297,49 +321,68 @@ To Run:
 
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
- -Pargs="--streaming  --runner=DataflowRunner --project=<project_id> --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=50 --maxNumWorkers=50 --qps=250000 --schemaLocation=gs://<path>.json --eventType=netflow-log-event --topic=projects/<project_id>/topics/<topic_id> --region=us-central1"
+ -Pargs="--streaming \
+ --runner=DataflowRunner \
+ --project=<project_id>  \
+ --autoscalingAlgorithm=NONE \
+ --workerMachineType=n1-standard-4 \
+ --numWorkers=50  \
+ --maxNumWorkers=50  \
+ --qps=250000 \
+ --schemaLocation=gs://<path>.json \
+ --eventType=netflow-log-event  \
+ --topic=projects/<project_id>/topics/<topic_id> \ 
+ --region=us-central1"
 ``` 
 
 Outlier Test 
 ```
-gcloud pubsub topics publish <topic_id> --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 150000,\"rxBytes\": 40000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
-gcloud pubsub topics publish <topic_id> --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish <topic_id> \
+ --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 150000,\"rxBytes\": 40000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+ 
+gcloud pubsub topics publish <topic_id> \
+ --message "{\"subscriberId\": \"demo1\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 ```
 
 Feature Extraction Test
 
 ```
-gcloud pubsub topics publish <topic_id>--message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
-gcloud pubsub topics publish <topic_id> --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish <topic_id> \
+--message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish <topic_id> \
+ --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 OUTPUT: INFO: row value Row:[2, 2, 2, 12.5, 15, 10, 50]
 ```
 
 ```
-gcloud pubsub topics publish <topic_id> --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
-gcloud pubsub topics publish events --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish <topic_id>  \
+--message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+
+gcloud pubsub topics publish <topic_id> \
+--message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 OUTPUT INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 ```
 ## Pipeline Performance at 250k msg/sec
 
 Pipeline DAG (ToDo: change with updated pipeline DAG)
 
-![ref_arch](diagram/dag.png)
+![dag](diagram/dag.png)
 
 Msg Rate
 
-![ref_arch](diagram/msg-rate.png)
+![msg_rate_](diagram/msg-rate.png)
 
 Ack Message Rate
 
-![ref_arch](diagram/un-ack-msg.png)
+![ack_msg](diagram/un-ack-msg.png)
 
 CPU Utilization
 
-![ref_arch](diagram/cpu.png)
+![cpu](diagram/cpu.png)
 
 System Latency 
 
-![ref_arch](diagram/latency.png)
+![latency](diagram/latency.png)
 
 ### K-Means Clustering Using BQ-ML (Model Evaluation)
 
@@ -350,6 +393,9 @@ System Latency
 ![ref_arch](diagram/bq-ml-kmeans-3.png)
 
 ![ref_arch](diagram/bq-ml-kmeans-4.png)
+
+### DLP Tokenization for. IMSI Number
+ 
 
 
 
