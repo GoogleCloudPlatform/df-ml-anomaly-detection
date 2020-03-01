@@ -10,7 +10,7 @@ This repo contains a reference implementation of  a ML based Network Anomaly Det
 	* [Train & Normalize Data Using BQ ML](#create-a-k-means-model-using-bq-ml )  
 	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation)
 	* [Realtime outlier detection using Dataflow](#find-the-outliers) 
-	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-itegration)
+	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-integration)
 	
 	 
 
