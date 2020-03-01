@@ -1,5 +1,5 @@
 #  ML based Network Anomaly Detection solution to identify Cyber Security Threat
-This repo contains a reference implementation of  a ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML and CLoud DLP.  Solution uses built in K-Means clustering model in  BQML to train and normalize netflow log data.  Dataflow for feature extraction & real time outlier detection and  uses Cloud DLP to crypto tokenize IMSI  (international mobile subscriber identity) as millions of netflow log ingested from PubSub or GCS.  
+This repo contains a reference implementation of  a ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML & CLoud DLP.  It uses an easy to use built in K-Means clustering model as part of BQML to train and normalize netflow log data.   Key part of the  implementation  uses  Dataflow for  feature extraction & real time outlier detection which  has been tested to process over 20TB of data. (250k msg/sec). Finally, it also uses Cloud DLP to tokenize IMSI  (international mobile subscriber identity) number as the streaming Dataflow pipeline  ingests millions of netflow log form Pub/Sub.
 
 ## Table of Contents  
 * [Summary](#summary)  
@@ -10,7 +10,7 @@ This repo contains a reference implementation of  a ML based Network Anomaly Det
 	* [Train & Normalize Data Using BQ ML](#create-a-k-means-model-using-bq-ml )  
 	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation)
 	* [Realtime outlier detection using Dataflow](#find-the-outliers) 
-	* [Sensitive data (IMSI) de-identification using CLoud DLP](#dlp-itegration)
+	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-itegration)
 	
 	 
 
