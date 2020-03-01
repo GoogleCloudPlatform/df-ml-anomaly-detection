@@ -15,4 +15,4 @@ include 'api'
 include 'services:webservice'
 */
 
-rootProject.name = 'df-secure-log-aggregation'
+rootProject.name = 'df-ml-anomaly-detection'

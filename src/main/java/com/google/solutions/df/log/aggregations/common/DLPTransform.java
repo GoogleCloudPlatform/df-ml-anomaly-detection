@@ -56,6 +56,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   @Nullable
   public abstract String inspectTemplateName();
 
+  @Nullable
   public abstract String deidTemplateName();
 
   public abstract Integer batchSize();
@@ -83,6 +84,12 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
 
+    if (deidTemplateName() == null) {
+
+      return input.apply(
+          "Convert To BqRow",
+          MapElements.via(new SimpleFunction<Row, Row>((Row bqRow) -> bqRow) {}));
+    }
     return input
         .apply("Convert To DLP Row", ParDo.of(new ConvertToDLPRow()))
         .apply("With Keys", WithKeys.of(UUID.randomUUID().toString()))
@@ -167,7 +174,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
       List<Table.Row> outputRows = tokenizedData.getRowsList();
       outputRows.forEach(
           row -> {
-            LOG.info("Tokenized Row {}", row);
+            LOG.debug("Tokenized Row {}", row);
             c.output(row);
           });
     }
