@@ -1,4 +1,21 @@
-# Reference Implementation for an Anomaly Detection solution to manage Cyber Security Threat
+#  ML based Network Anomaly Detection solution to identify Cyber Security Threat
+This repo contains a reference implementation of  a ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML and CLoud DLP.  Solution uses built in K-Means clustering model in  BQML to train and normalize netflow log data.  Dataflow for feature extraction & real time outlier detection and  uses Cloud DLP to crypto tokenize IMSI  (international mobile subscriber identity) as millions of netflow log ingested from PubSub or GCS.  
+
+## Table of Contents  
+* [Summary](#summary)  
+* [Reference Architecture](#reference-architecture).      
+* [Quick Start](#quick-start).  
+* [Learn More](#learn-more-about-this-solution)
+	* [Mock Data Generator to Pub/Sub Using Dataflow](#test)
+	* [Train & Normalize Data Using BQ ML](#create-a-k-means-model-using-bq-ml )  
+	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation)
+	* [Realtime outlier detection using Dataflow](#find-the-outliers) 
+	* [Sensitive data (IMSI) de-identification using CLoud DLP](#dlp-itegration)
+	
+	 
+
+
+## Summary
 Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights a ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
 This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in netflow logs  in real time.  This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
@@ -9,7 +26,7 @@ In summary, you can use this solution to demo following 3 use cases :
 2. Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering.  
 3. Protecting sensitive information e.g:"IMSI (international mobile subscriber identity)" by using Cloud DLP crypto based tokenization.  
 
-## End to end serverless architecture
+## Reference Architecture
 
 
 ![ref_arch](diagram/ref_arch.png)
@@ -56,7 +73,7 @@ _API_KEY=$(gcloud auth print-access-token)
 ### Generate some mock data (1k events/sec) in PubSub topic
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
- -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/netflow_log_json_schema.json  --eventType=wesp --topic=${TOPIC_ID} --region=us-central1"
+ -Pargs="--streaming  --runner=DataflowRunner --project=${PROJECT_ID} --autoscalingAlgorithm=NONE --workerMachineType=n1-standard-4 --numWorkers=3 --maxNumWorkers=3 --qps=1000 --schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/netflow_log_json_schema.json  --eventType=netflow --topic=${TOPIC_ID} --region=us-central1"
 ```
 ### Publish an outlier with an unusal tx & rx bytes
 ```
@@ -133,7 +150,7 @@ Sample Input Data
 }
 ```
 
-### Aggregation Using Beam Schema Inferring 
+### Feature Extraction Using Beam Schema Inferring 
 ```.apply("Group By SubId & DestSubNet",
    Group.<Row>byFieldNames("subscriberId", "dstSubnet")
       .aggregateField(
@@ -172,7 +189,7 @@ AS select * except (transaction_time, subscriber_id, number_of_unique_ips, numbe
 from network_logs.train_data;
 ```
 
-### Normalize Data
+### Normalize Data using BQ Store Procedure
 
 1. Predict on the train dataset to get the nearest distance from centroid for each record.
 2. Calculate the STD DEV for each point to normalize
@@ -370,8 +387,8 @@ OUTPUT INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 
 Pipeline DAG (ToDo: change with updated pipeline DAG)
 
-![dag](diagram/dag_1.png)
-![dag](diagram/dag_2.png)
+![dag](diagram/dag_main.png)
+
 
 Msg Rate
 
@@ -402,10 +419,75 @@ System Latency
 ![ref_arch](diagram/bq-ml-kmeans-4.png)
 
  
-### DLP De-Identification for IMSI number (Crypto Based Tokenizattion)
+### DLP Integration
 
+To protect any sensitive data in the log,  you can use Cloud DLP to inspect, de-identify before data is stored in BigQuery. This is an optional integration in our reference architecture. To enable, please follow the steps below:
+
+*  Update the JSON file at scripts/deid_imeer_number.json to add the de-identification transformation applicable for your use case. Screen shot below used a crypto based  deterministic transformation to de-identify IMSI number.  To understand how DLP transformation can be used plaease refer to this [guide](https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp).  
+
+```
+{
+   "deidentifyTemplate":{
+      "displayName":"Config to DeIdentify IMEI Number",
+      "description":"IMEI Number masking transformation",
+      "deidentifyConfig":{
+         "recordTransformations":{
+            "fieldTransformations":[
+               {
+                  "fields":[
+                     {
+                        "name":"subscriber_id"
+                     }
+                  ],
+                  "primitiveTransformation":{
+                     "cryptoDeterministicConfig":{
+                        "cryptoKey":{
+                         	<add _dlp_transformation_config>
+                           }
+                        },
+                        "surrogateInfoType":{
+                           "name":"IMSI_TOKEN"
+                        }
+                     }
+                  }
+               }
+            ]
+         }
+      }
+   },
+   "templateId":"dlp-deid-subcriber-id"
+}
+```
+
+*  Run this script (deid_tempalte.sh) to create a template in your project.  
+
+```set -x 
+PROJECT_ID=$(gcloud config get-value project)
+DEID_CONFIG="@deid_imei_number.json"
+DEID_TEMPLATE_OUTPUT="deid-template.json"
+API_KEY=$(gcloud auth print-access-token)
+API_ROOT_URL="https://dlp.googleapis.com"
+DEID_TEMPLATE_API="${API_ROOT_URL}/v2/projects/${PROJECT_ID}/deidentifyTemplates"
+curl -X POST -H "Content-Type: application/json" \
+ -H "Authorization: Bearer ${API_KEY}" \
+ "${DEID_TEMPLATE_API}"`` \
+ -d "${DEID_CONFIG}"\
+ -o "${DEID_TEMPLATE_OUTPUT}"  
+ ```
+
+*  Pass the DLP template name Dataflow pipeline. 
+
+```export DEID_TEMPLATE_NAME=$(jq -r '.name' deid-template.json);echo $DEID_TEMPLATE_NAME
+--deidTemplateName=projects/<project_id>/deidentifyTemplates/dlp-deid-subcriber-id"
+```
+
+Note: Please checkout this [repo](https://github.com/GoogleCloudPlatform/dlp-dataflow-deidentification) to learn more about a end to end data tokenization solution. 
 
 ![ref_arch](diagram/dlp_imsi.png)
+
+If you click on DLP Tranformation from the DAG, you will see following sub transforms:
+
+![ref_arch](diagram/dlp_dag.png)
 
 
 

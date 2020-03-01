@@ -1,9 +1,9 @@
 {
-  "name": "projects/custom-network-test/deidentifyTemplates/dlp-deid-subcriber-id",
+  "name": "projects/next-demo-2020/deidentifyTemplates/dlp-deid-subcriber-id",
   "displayName": "Config to DeIdentify IMEI Number",
   "description": "IMEI Number masking transformation",
-  "createTime": "2019-12-29T01:31:00.521801Z",
-  "updateTime": "2019-12-29T01:31:00.521801Z",
+  "createTime": "2020-03-01T14:41:49.014318Z",
+  "updateTime": "2020-03-01T14:41:49.014318Z",
   "deidentifyConfig": {
     "recordTransformations": {
       "fieldTransformations": [
@@ -14,14 +14,15 @@
             }
           ],
           "primitiveTransformation": {
-            "characterMaskConfig": {
-              "maskingCharacter": "*",
-              "numberToMask": 7,
-              "charactersToIgnore": [
-                {
-                  "charactersToSkip": "-"
+            "cryptoDeterministicConfig": {
+              "cryptoKey": {
+                "unwrapped": {
+                  "key": "YWJjZGVmZ2hpamtsbW5vcA=="
                 }
-              ]
+              },
+              "surrogateInfoType": {
+                "name": "IMSI_TOKEN"
+              }
             }
           }
         }

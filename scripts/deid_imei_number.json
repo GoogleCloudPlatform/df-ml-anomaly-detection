@@ -1,33 +1,34 @@
-{ 
-   "deidentifyTemplate":{ 
+{
+   "deidentifyTemplate":{
       "displayName":"Config to DeIdentify IMEI Number",
       "description":"IMEI Number masking transformation",
-      "deidentifyConfig":{ 
-         "recordTransformations":{ 
-            "fieldTransformations":[ 
-               { 
-                  "fields":[ 
-                     { 
+      "deidentifyConfig":{
+         "recordTransformations":{
+            "fieldTransformations":[
+               {
+                  "fields":[
+                     {
                         "name":"subscriber_id"
                      }
                   ],
-                  "primitiveTransformation":{ 
-                     "characterMaskConfig":{ 
-                        "charactersToIgnore":[ 
-                           { 
-                              "charactersToSkip":"-"
+                  "primitiveTransformation":{
+                     "cryptoDeterministicConfig":{
+                        "cryptoKey":{
+                           "unwrapped":{
+                              "key":"YWJjZGVmZ2hpamtsbW5vcA=="
                            }
-                        ],
-                        "maskingCharacter":"*",
-                        "numberToMask":"7"
+                        },
+                        "surrogateInfoType":{
+                           "name":"IMSI_TOKEN"
+                        }
                      }
                   }
                }
             ]
          }
       }
-  	}, 
-	"templateId":"dlp-deid-subcriber-id"
+   },
+   "templateId":"dlp-deid-subcriber-id"
 }
 
 
