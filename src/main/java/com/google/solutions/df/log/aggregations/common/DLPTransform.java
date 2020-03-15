@@ -220,7 +220,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         tableRowBuilder.addValues(Value.newBuilder().setStringValue(row.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
-      LOG.debug("DLPRow {}", dlpRow.toString());
+      LOG.info("DLPRow {}", dlpRow.toString());
       c.output(dlpRow);
     }
   }

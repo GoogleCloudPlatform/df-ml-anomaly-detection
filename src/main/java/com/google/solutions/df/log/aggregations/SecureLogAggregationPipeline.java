@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
   /** Default interval for polling files in GCS. */
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);
 
   public static void main(String args[]) {
 
