@@ -1,5 +1,5 @@
 #  ML based Network Anomaly Detection solution to identify Cyber Security Threat
-This repo contains a reference implementation of  a ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML & Cloud DLP.  It uses an easy to use built in K-Means clustering model as part of BQML to train and normalize netflow log data.   Key part of the  implementation  uses  Dataflow for  feature extraction & real time outlier detection which  has been tested to process over 20TB of data. (250k msg/sec). Finally, it also uses Cloud DLP to tokenize IMSI  (international mobile subscriber identity) number as the streaming Dataflow pipeline  ingests millions of netflow log form Pub/Sub.
+This repo contains a reference implementation of an ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML & Cloud DLP.  It uses an easy to use built in K-Means clustering model as part of BQML to train and normalize netflow log data.   Key part of the  implementation  uses  Dataflow for  feature extraction & real time outlier detection which  has been tested to process over 20TB of data. (250k msg/sec). Finally, it also uses Cloud DLP to tokenize IMSI  (international mobile subscriber identity) number as the streaming Dataflow pipeline  ingests millions of netflow log form Pub/Sub.
 
 ## Table of Contents  
 * [Summary](#summary)  
@@ -16,7 +16,7 @@ This repo contains a reference implementation of  a ML based Network Anomaly Det
 
 
 ## Summary
-Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights a ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
+Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights an ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
 This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in netflow logs  in real time.  This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
 
@@ -63,10 +63,10 @@ export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
 
 ```
 gcloud builds submit scripts/. --config scripts/cloud-build-demo.yaml  --substitutions \
-_DATASET=$DATASET, \
-_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET, \
-_SUBSCRIPTION_ID=${SUBSCRIPTION_ID}, \
-_TOPIC_ID=${TOPIC_ID} , \ 
+_DATASET=$DATASET,\
+_DATA_STORAGE_BUCKET=$DATA_STORAGE_BUCKET,\
+_SUBSCRIPTION_ID=${SUBSCRIPTION_ID},\
+_TOPIC_ID=${TOPIC_ID},\
 _API_KEY=$(gcloud auth print-access-token)
 ```
 
