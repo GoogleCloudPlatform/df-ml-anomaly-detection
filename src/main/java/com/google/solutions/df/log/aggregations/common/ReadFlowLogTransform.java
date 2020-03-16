@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 @AutoValue
 public abstract class ReadFlowLogTransform extends PTransform<PBegin, PCollection<Row>> {
-  public static final Logger LOG = LoggerFactory.getLogger(PredictTransform.class);
+  public static final Logger LOG = LoggerFactory.getLogger(ReadFlowLogTransform.class);
 
   public abstract String subscriber();
 

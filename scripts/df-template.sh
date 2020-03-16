@@ -52,9 +52,7 @@ PARAMETERS_CONFIG='{
 	  "deidTemplateName":"'$DEID_TEMPLATE_NAME'",
 	  "batchSize":"'$BATCH_SIZE'",
 	  "customGcsTempLocation":"'$TEMP_LOCATION'",
-	  "inputFilePattern":"'$INPUT_FILE_PATTERN'" ,
-	  "deidTemplateName": '$DEID_TEMPLATE_NAME'
-	   
+	  "inputFilePattern":"'$INPUT_FILE_PATTERN'" 
 	}
 }'
 DF_API_ROOT_URL="https://dataflow.googleapis.com"
