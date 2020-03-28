@@ -40,10 +40,13 @@ import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.joda.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StreamingBenchmark {
 
   public static final String MESSAGE_TYPE_HEADER = "event_type";
+  public static final Logger LOG = LoggerFactory.getLogger(MessageGeneratorFn.class);
 
   public interface Options extends PipelineOptions {
     @Description("The QPS which the benchmark should output to Pub/Sub.")
@@ -142,8 +145,9 @@ public class StreamingBenchmark {
 
         payload = byteArrayOutputStream.toByteArray();
       }
-
-      context.output(new PubsubMessage(payload, attributes));
+      PubsubMessage message = new PubsubMessage(payload, attributes);
+      LOG.info(message.getPayload().toString());
+      context.output(message);
     }
   }
 }
