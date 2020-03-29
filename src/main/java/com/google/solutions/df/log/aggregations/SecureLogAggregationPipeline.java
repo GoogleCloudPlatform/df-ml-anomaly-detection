@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
   /** Default interval for polling files in GCS. */
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
 
   public static void main(String args[]) {
 
@@ -71,7 +71,7 @@ public class SecureLogAggregationPipeline {
                     .withMethod(Method.EXPORT))
             .apply("Centroids Data as Input", View.asList());
     // read from GCS and pub sub
-    PCollection<Row> rows =
+    PCollection<Row> maybeTokenizedRows =
         p.apply(
                 "Read FlowLog Data",
                 ReadFlowLogTransform.newBuilder()
@@ -87,10 +87,7 @@ public class SecureLogAggregationPipeline {
                     .discardingFiredPanes()
                     .withAllowedLateness(Duration.ZERO))
             .apply("Feature Extraction", new LogRowTransform())
-            .setRowSchema(Util.bqLogSchema);
-
-    PCollection<Row> mayBeTokenizedRows =
-        rows.apply(
+            .apply(
                 "DLP Transformation",
                 DLPTransform.newBuilder()
                     .setBatchSize(options.getBatchSize())
@@ -100,7 +97,7 @@ public class SecureLogAggregationPipeline {
                     .build())
             .setRowSchema(Util.bqLogSchema);
 
-    mayBeTokenizedRows.apply(
+    maybeTokenizedRows.apply(
         "Batch to Feature Table",
         BQWriteTransform.newBuilder()
             .setTableSpec(options.getTableSpec())
@@ -110,7 +107,8 @@ public class SecureLogAggregationPipeline {
             .build());
 
     // prediction - let's have some fun
-    rows.apply(
+    maybeTokenizedRows
+        .apply(
             "Anomaly Detection",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())
         .apply(

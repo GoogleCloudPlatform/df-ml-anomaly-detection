@@ -15,8 +15,8 @@
  */
 buildscript {
     ext {
-        dataflowBeamVersion = '2.18.0'
-        visionApiVersion = '1.87.0'
+        dataflowBeamVersion = '2.19.0'
+       
         
     }
     repositories {
@@ -46,8 +46,8 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
 
-mainClassName = System.getProperty("mainClass")
-//mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
+//mainClassName = System.getProperty("mainClass")
+mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
@@ -88,7 +88,6 @@ dependencies {
 	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-zetasketch', version: dataflowBeamVersion
 	compile "com.google.auto.value:auto-value-annotations:1.6.2"
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
-	compile group: 'com.google.cloud', name:'google-cloud-vision', version: visionApiVersion
 	compile 'com.google.cloud:google-cloud-storage:1.98.0'
 	compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
 	compile group: 'commons-validator', name: 'commons-validator', version: '1.4.0'

@@ -15,35 +15,38 @@
  */
 package com.google.solutions.df.log.aggregations.common;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MergeLogAggrMap extends SimpleFunction<KV<Row, Row>, Row> {
-  private static final Logger LOG = LoggerFactory.getLogger(LogRowTransform.class);
+public class MergeLogAggrMap extends SimpleFunction<Row, Row> {
+  private static final Logger LOG = LoggerFactory.getLogger(MergeLogAggrMap.class);
 
   @Override
-  public Row apply(KV<Row, Row> input) {
+  public Row apply(Row input) {
 
     return Row.withSchema(Util.bqLogSchema)
-        .addValues(
-            input.getKey().getString("subscriberId"),
-            input.getKey().getString("dstSubnet"),
-            Util.getTimeStamp(),
-            input.getValue().getInt64("number_of_records").intValue(),
-            input.getValue().getInt64("number_of_unique_ips").intValue(),
-            input.getValue().getInt64("number_of_unique_ports").intValue(),
-            input.getValue().getInt32("max_tx_bytes"),
-            input.getValue().getInt32("min_tx_bytes"),
-            input.getValue().getDouble("avg_tx_bytes"),
-            input.getValue().getInt32("max_rx_bytes"),
-            input.getValue().getInt32("min_rx_bytes"),
-            input.getValue().getDouble("avg_rx_bytes"),
-            input.getValue().getInt32("max_duration"),
-            input.getValue().getInt32("min_duration"),
-            input.getValue().getDouble("avg_duration"))
+        .addIterable(
+            ImmutableList.of(
+                Row.withSchema(Util.bqLogValueSchema)
+                    .addValues(
+                        input.getRow("key").getString("subscriberId"),
+                        input.getRow("key").getString("dstSubnet"),
+                        Util.getTimeStamp(),
+                        input.getRow("value").getInt64("number_of_records").intValue(),
+                        input.getRow("value").getInt64("number_of_unique_ips").intValue(),
+                        input.getRow("value").getInt64("number_of_unique_ports").intValue(),
+                        input.getRow("value").getInt32("max_tx_bytes"),
+                        input.getRow("value").getInt32("min_tx_bytes"),
+                        input.getRow("value").getDouble("avg_tx_bytes"),
+                        input.getRow("value").getInt32("max_rx_bytes"),
+                        input.getRow("value").getInt32("min_rx_bytes"),
+                        input.getRow("value").getDouble("avg_rx_bytes"),
+                        input.getRow("value").getInt32("max_duration"),
+                        input.getRow("value").getInt32("min_duration"),
+                        input.getRow("value").getDouble("avg_duration")).build()))
         .build();
   }
 }
