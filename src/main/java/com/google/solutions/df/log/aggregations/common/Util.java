@@ -66,7 +66,7 @@ public class Util {
               Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true))
           .collect(toSchema());
 
-  public static final Schema bqLogValueSchema =
+  public static final Schema bqLogSchema =
       Stream.of(
               Schema.Field.of("subscriber_id", FieldType.STRING).withNullable(true),
               Schema.Field.of("dst_subnet", FieldType.STRING).withNullable(true),
@@ -84,9 +84,6 @@ public class Util {
               Schema.Field.of("min_duration", FieldType.INT32).withNullable(true),
               Schema.Field.of("avg_duration", FieldType.DOUBLE).withNullable(true))
           .collect(toSchema());
-
-  public static final Schema bqLogSchema =
-      Schema.builder().addIterableField("value", FieldType.row(bqLogValueSchema)).build();
   public static final Schema outlierSchema =
       Stream.of(
               Schema.Field.of("subscriber_id", FieldType.STRING).withNullable(true),

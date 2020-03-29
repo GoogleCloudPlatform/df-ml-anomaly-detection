@@ -26,6 +26,7 @@ import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
 import java.util.List;
+import java.util.UUID;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -94,6 +95,7 @@ public class SecureLogAggregationPipeline {
                     .setDeidTemplateName(options.getDeidTemplateName())
                     .setInspectTemplateName(options.getInspectTemplateName())
                     .setProjectId(options.getProject())
+                    .setRandomKey(UUID.randomUUID().toString())
                     .build())
             .setRowSchema(Util.bqLogSchema);
 

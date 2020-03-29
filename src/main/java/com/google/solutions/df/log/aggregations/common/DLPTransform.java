@@ -15,7 +15,6 @@
  */
 package com.google.solutions.df.log.aggregations.common;
 
-import avro.shaded.com.google.common.collect.Iterators;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.privacy.dlp.v2.ContentItem;
@@ -47,6 +46,7 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -68,6 +68,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
 
   public abstract String projectId();
 
+  public abstract String randomKey();
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -78,6 +80,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public abstract Builder setBatchSize(Integer batchSize);
 
     public abstract Builder setProjectId(String projectId);
+
+    public abstract Builder setRandomKey(String randomKey);
 
     public abstract DLPTransform build();
   }
@@ -96,6 +100,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           MapElements.via(new SimpleFunction<Row, Row>((Row bqRow) -> bqRow) {}));
     }
     return input
+        .apply("AddKey", WithKeys.of(randomKey()))
         .apply("Convert To DLP Row", ParDo.of(new ConvertToDLPRow()))
         .apply("Batch Request", ParDo.of(new BatchTableRequest(batchSize())))
         .apply(
@@ -137,9 +142,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         OutputReceiver<Iterable<Table.Row>> output) {
       eventTimer.set(elementTs);
       Integer currentElementSize =
-          (element.getValue().toByteString() == null)
-              ? 0
-              : element.getValue().toByteString().size();
+          (element.getValue() == null) ? 0 : element.getValue().getSerializedSize();
       Integer currentBufferSize = (elementsSize.read() == null) ? 0 : elementsSize.read();
       boolean clearBuffer = (currentElementSize + currentBufferSize) > batchSize;
       LOG.debug(
@@ -150,9 +153,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
       if (clearBuffer) {
         Iterable<Table.Row> inspectBufferedData = elementsBag.read();
         output.output(inspectBufferedData);
-        LOG.info(
-            "****CLEAR BUFFER **** Current Rows Count {}",
-            Iterators.size(inspectBufferedData.iterator()));
+        LOG.info("****CLEAR BUFFER **** Current Buffer Size {}", elementsSize.read());
         clearState(elementsBag, elementsSize);
         clearBuffer = false;
         currentBufferSize = 0;
@@ -172,11 +173,12 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         OutputReceiver<Iterable<Table.Row>> output) {
       // Process left over records less than  batch size
       Iterable<Table.Row> inspectBufferedData = elementsBag.read();
-      output.output(inspectBufferedData);
-      LOG.info(
-          "****Timer Triggered **** Current Rows Count {}",
-          Iterators.size(inspectBufferedData.iterator()));
-      clearState(elementsBag, elementsSize);
+      if (elementsSize.read() < batchSize) output.output(inspectBufferedData);
+      else {
+        LOG.info("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
+      }
+      LOG.info("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
+      // clearState(elementsBag, elementsSize);
     }
 
     private static void clearState(
@@ -259,6 +261,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
       c.element().forEach(rows::add);
       Table dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
       ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+
       this.requestBuilder.setItem(tableItem);
       DeidentifyContentResponse response =
           dlpServiceClient.deidentifyContent(this.requestBuilder.build());
@@ -295,29 +298,29 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               .addValue(Double.valueOf(input.getValues(14).getStringValue()))
               .build();
 
-      LOG.info("BQ Row {}", bqRow.toString());
+      LOG.debug("BQ Row {}", bqRow.toString());
       return bqRow;
     }
   }
 
-  public static class ConvertToDLPRow extends DoFn<Row, KV<String, Table.Row>> {
+  public static class ConvertToDLPRow extends DoFn<KV<String, Row>, KV<String, Table.Row>> {
+
     @ProcessElement
     public void processElement(ProcessContext c) {
 
-      String dstSubnet = c.element().getString("dst_subnet");
-
-      Iterator<Object> row = c.element().getValues().iterator();
+      Row row = c.element().getValue();
+      Iterator<Object> rowItr = row.getValues().iterator();
 
       Table.Row.Builder tableRowBuilder = Table.Row.newBuilder();
 
-      while (row.hasNext()) {
+      while (rowItr.hasNext()) {
 
-        tableRowBuilder.addValues(Value.newBuilder().setStringValue(row.next().toString()));
+        tableRowBuilder.addValues(Value.newBuilder().setStringValue(rowItr.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
 
-      LOG.info("DLPRow {}", dlpRow.toString());
-      c.output(KV.of(dstSubnet, dlpRow));
+      LOG.debug("Key {}, DLPRow {}", c.element().getKey(), dlpRow.toString());
+      c.output(KV.of(c.element().getKey(), dlpRow));
     }
   }
 }
