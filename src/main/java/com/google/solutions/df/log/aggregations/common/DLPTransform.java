@@ -74,15 +74,10 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   public abstract static class Builder {
 
     public abstract Builder setInspectTemplateName(String inspectTemplateName);
-
     public abstract Builder setDeidTemplateName(String deidTemplateName);
-
     public abstract Builder setBatchSize(Integer batchSize);
-
     public abstract Builder setProjectId(String projectId);
-
     public abstract Builder setRandomKey(String randomKey);
-
     public abstract DLPTransform build();
   }
 
@@ -113,25 +108,18 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   public static class BatchTableRequest extends DoFn<KV<String, Table.Row>, Iterable<Table.Row>> {
 
     private static final long serialVersionUID = 1L;
-
     private final Counter numberOfRowsBagged =
         Metrics.counter(BatchTableRequest.class, "numberOfRowsBagged");
-
     private Integer batchSize;
-
     public BatchTableRequest(Integer batchSize) {
       this.batchSize = batchSize;
     }
-
     @StateId("elementsBag")
     private final StateSpec<BagState<Table.Row>> elementsBag = StateSpecs.bag();
-
     @StateId("elementsSize")
     private final StateSpec<ValueState<Integer>> elementsSize = StateSpecs.value();
-
     @TimerId("eventTimer")
     private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
-
     @ProcessElement
     public void process(
         @Element KV<String, Table.Row> element,
@@ -153,7 +141,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
       if (clearBuffer) {
         Iterable<Table.Row> inspectBufferedData = elementsBag.read();
         output.output(inspectBufferedData);
-        LOG.info("****CLEAR BUFFER **** Current Buffer Size {}", elementsSize.read());
+        LOG.debug("****CLEAR BUFFER **** Current Buffer Size {}", elementsSize.read());
         clearState(elementsBag, elementsSize);
         clearBuffer = false;
         currentBufferSize = 0;
@@ -175,9 +163,9 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
       Iterable<Table.Row> inspectBufferedData = elementsBag.read();
       if (elementsSize.read() < batchSize) output.output(inspectBufferedData);
       else {
-        LOG.info("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
+        LOG.error("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
       }
-      LOG.info("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
+      LOG.debug("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
       // clearState(elementsBag, elementsSize);
     }
 
@@ -310,15 +298,12 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
 
       Row row = c.element().getValue();
       Iterator<Object> rowItr = row.getValues().iterator();
-
       Table.Row.Builder tableRowBuilder = Table.Row.newBuilder();
-
       while (rowItr.hasNext()) {
 
         tableRowBuilder.addValues(Value.newBuilder().setStringValue(rowItr.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
-
       LOG.debug("Key {}, DLPRow {}", c.element().getKey(), dlpRow.toString());
       c.output(KV.of(c.element().getKey(), dlpRow));
     }
