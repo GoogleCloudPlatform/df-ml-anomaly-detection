@@ -74,10 +74,15 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
   public abstract static class Builder {
 
     public abstract Builder setInspectTemplateName(String inspectTemplateName);
+
     public abstract Builder setDeidTemplateName(String deidTemplateName);
+
     public abstract Builder setBatchSize(Integer batchSize);
+
     public abstract Builder setProjectId(String projectId);
+
     public abstract Builder setRandomKey(String randomKey);
+
     public abstract DLPTransform build();
   }
 
@@ -111,15 +116,20 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     private final Counter numberOfRowsBagged =
         Metrics.counter(BatchTableRequest.class, "numberOfRowsBagged");
     private Integer batchSize;
+
     public BatchTableRequest(Integer batchSize) {
       this.batchSize = batchSize;
     }
+
     @StateId("elementsBag")
     private final StateSpec<BagState<Table.Row>> elementsBag = StateSpecs.bag();
+
     @StateId("elementsSize")
     private final StateSpec<ValueState<Integer>> elementsSize = StateSpecs.value();
+
     @TimerId("eventTimer")
     private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
+
     @ProcessElement
     public void process(
         @Element KV<String, Table.Row> element,
@@ -166,7 +176,6 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         LOG.error("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
       }
       LOG.debug("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
-      // clearState(elementsBag, elementsSize);
     }
 
     private static void clearState(
@@ -297,6 +306,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public void processElement(ProcessContext c) {
 
       Row row = c.element().getValue();
+      Double millisTosecs= (c.timestamp().getMillis()*0.001);
+      String key = c.element().getKey().concat("_" + String.valueOf(millisTosecs.intValue()));
       Iterator<Object> rowItr = row.getValues().iterator();
       Table.Row.Builder tableRowBuilder = Table.Row.newBuilder();
       while (rowItr.hasNext()) {
@@ -304,8 +315,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         tableRowBuilder.addValues(Value.newBuilder().setStringValue(rowItr.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
-      LOG.debug("Key {}, DLPRow {}", c.element().getKey(), dlpRow.toString());
-      c.output(KV.of(c.element().getKey(), dlpRow));
+      LOG.debug("Key {}, DLPRow {}", key, dlpRow);
+      c.output(KV.of(key, dlpRow));
     }
   }
 }

@@ -1,5 +1,5 @@
 {
- "subscriberId": "{{long(1000000000,1099999999)}}",
+ "subscriberId": "{{long(00000000,00099999)}}",
  "srcIP": "{{ipv4()}}",
  "dstIP": "{{subnet()}}",
  "srcPort": {{integer(1000,5000)}},
