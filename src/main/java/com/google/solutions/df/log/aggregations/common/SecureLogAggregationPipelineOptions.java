@@ -48,8 +48,8 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setTableSpec(String value);
 
-  @Description("Aggregation Window Interval")
-  @Default.Integer(1)
+  @Description("Aggregation Window Interval Default to 60 seconds")
+  @Default.Integer(60)
   Integer getWindowInterval();
 
   void setWindowInterval(Integer value);

@@ -29,15 +29,19 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.coders.IterableCoder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
-import org.apache.beam.sdk.extensions.protobuf.ProtoCoder;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.state.BagState;
+import org.apache.beam.sdk.state.StateSpec;
+import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.TimeDomain;
+import org.apache.beam.sdk.state.Timer;
+import org.apache.beam.sdk.state.TimerSpec;
+import org.apache.beam.sdk.state.TimerSpecs;
+import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.GroupIntoBatches;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -46,6 +50,7 @@ import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +68,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
 
   public abstract String projectId();
 
+  public abstract String randomKey();
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -73,6 +80,8 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public abstract Builder setBatchSize(Integer batchSize);
 
     public abstract Builder setProjectId(String projectId);
+
+    public abstract Builder setRandomKey(String randomKey);
 
     public abstract DLPTransform build();
   }
@@ -91,11 +100,9 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           MapElements.via(new SimpleFunction<Row, Row>((Row bqRow) -> bqRow) {}));
     }
     return input
+        .apply("AddKey", WithKeys.of(randomKey()))
         .apply("Convert To DLP Row", ParDo.of(new ConvertToDLPRow()))
-        .apply("With Keys", WithKeys.of(UUID.randomUUID().toString()))
-        .apply("Group Into Batches", GroupIntoBatches.<String, Table.Row>ofSize(batchSize()))
-        .setCoder(
-            KvCoder.of(StringUtf8Coder.of(), IterableCoder.of(ProtoCoder.of(Table.Row.class))))
+        .apply("Batch Request", ParDo.of(new BatchTableRequest(batchSize())))
         .apply(
             "DLP Tokenization",
             ParDo.of(
@@ -103,7 +110,91 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         .apply("ConvertToBQRow", MapElements.via(new ConvertToBQRow()));
   }
 
-  public static class DLPTokenizationDoFn extends DoFn<KV<String, Iterable<Table.Row>>, Table.Row> {
+  public static class BatchTableRequest extends DoFn<KV<String, Table.Row>, Iterable<Table.Row>> {
+
+    private static final long serialVersionUID = 1L;
+    private final Counter numberOfRowsBagged =
+        Metrics.counter(BatchTableRequest.class, "numberOfRowsBagged");
+    private Integer batchSize;
+
+    public BatchTableRequest(Integer batchSize) {
+      this.batchSize = batchSize;
+    }
+
+    @StateId("elementsBag")
+    private final StateSpec<BagState<Table.Row>> elementsBag = StateSpecs.bag();
+
+    @StateId("elementsSize")
+    private final StateSpec<ValueState<Integer>> elementsSize = StateSpecs.value();
+
+    @TimerId("eventTimer")
+    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
+
+    @ProcessElement
+    public void process(
+        @Element KV<String, Table.Row> element,
+        @StateId("elementsBag") BagState<Table.Row> elementsBag,
+        @StateId("elementsSize") ValueState<Integer> elementsSize,
+        @Timestamp Instant elementTs,
+        @TimerId("eventTimer") Timer eventTimer,
+        OutputReceiver<Iterable<Table.Row>> output) {
+      eventTimer.set(elementTs);
+      Integer currentElementSize =
+          (element.getValue() == null) ? 0 : element.getValue().getSerializedSize();
+      Integer currentBufferSize = (elementsSize.read() == null) ? 0 : elementsSize.read();
+      boolean clearBuffer = (currentElementSize + currentBufferSize) > batchSize;
+      LOG.debug(
+          "Clear Buffer {}, Curret Elements Size {}, currentBufferSize {}",
+          clearBuffer,
+          currentElementSize,
+          currentBufferSize);
+      if (clearBuffer) {
+        Iterable<Table.Row> inspectBufferedData = elementsBag.read();
+        output.output(inspectBufferedData);
+        LOG.debug("****CLEAR BUFFER **** Current Buffer Size {}", elementsSize.read());
+        clearState(elementsBag, elementsSize);
+        clearBuffer = false;
+        currentBufferSize = 0;
+        addState(elementsBag, elementsSize, element, currentElementSize + currentBufferSize);
+        numberOfRowsBagged.inc();
+
+      } else {
+        addState(elementsBag, elementsSize, element, currentElementSize + currentBufferSize);
+        numberOfRowsBagged.inc();
+      }
+    }
+
+    @OnTimer("eventTimer")
+    public void onTimer(
+        @StateId("elementsBag") BagState<Table.Row> elementsBag,
+        @StateId("elementsSize") ValueState<Integer> elementsSize,
+        OutputReceiver<Iterable<Table.Row>> output) {
+      // Process left over records less than  batch size
+      Iterable<Table.Row> inspectBufferedData = elementsBag.read();
+      if (elementsSize.read() < batchSize) output.output(inspectBufferedData);
+      else {
+        LOG.error("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
+      }
+      LOG.debug("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
+    }
+
+    private static void clearState(
+        BagState<Table.Row> elementsBag, ValueState<Integer> elementsSize) {
+      elementsBag.clear();
+      elementsSize.clear();
+    }
+
+    private static void addState(
+        BagState<Table.Row> elementsBag,
+        ValueState<Integer> elementsSize,
+        KV<String, Table.Row> element,
+        Integer size) {
+      elementsBag.add(element.getValue());
+      elementsSize.write(size);
+    }
+  }
+
+  public static class DLPTokenizationDoFn extends DoFn<Iterable<Table.Row>, Table.Row> {
     private DlpServiceClient dlpServiceClient;
     private boolean inspectTemplateExist;
     private String dlpProjectId;
@@ -164,9 +255,10 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               .collect(Collectors.toList());
 
       List<Table.Row> rows = new ArrayList<>();
-      c.element().getValue().forEach(rows::add);
+      c.element().forEach(rows::add);
       Table dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
       ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+
       this.requestBuilder.setItem(tableItem);
       DeidentifyContentResponse response =
           dlpServiceClient.deidentifyContent(this.requestBuilder.build());
@@ -203,25 +295,27 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               .addValue(Double.valueOf(input.getValues(14).getStringValue()))
               .build();
 
-      LOG.info("BQ Row {}", bqRow.toString());
+      LOG.debug("BQ Row {}", bqRow.toString());
       return bqRow;
     }
   }
 
-  public static class ConvertToDLPRow extends DoFn<Row, Table.Row> {
+  public static class ConvertToDLPRow extends DoFn<KV<String, Row>, KV<String, Table.Row>> {
+
     @ProcessElement
     public void processElement(ProcessContext c) {
 
-      Iterator<Object> row = c.element().getValues().iterator();
+      Row row = c.element().getValue();
+      Double millisTosecs = (c.timestamp().getMillis() * 0.001);
+      String key = c.element().getKey().concat("_" + String.valueOf(millisTosecs.intValue()));
+      Iterator<Object> rowItr = row.getValues().iterator();
       Table.Row.Builder tableRowBuilder = Table.Row.newBuilder();
-
-      while (row.hasNext()) {
-
-        tableRowBuilder.addValues(Value.newBuilder().setStringValue(row.next().toString()));
+      while (rowItr.hasNext()) {
+        tableRowBuilder.addValues(Value.newBuilder().setStringValue(rowItr.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
-      LOG.info("DLPRow {}", dlpRow.toString());
-      c.output(dlpRow);
+      LOG.debug("Key {}, DLPRow {}", key, dlpRow);
+      c.output(KV.of(key, dlpRow));
     }
   }
 }

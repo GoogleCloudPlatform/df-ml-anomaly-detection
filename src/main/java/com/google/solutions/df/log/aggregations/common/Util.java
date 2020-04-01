@@ -84,7 +84,6 @@ public class Util {
               Schema.Field.of("min_duration", FieldType.INT32).withNullable(true),
               Schema.Field.of("avg_duration", FieldType.DOUBLE).withNullable(true))
           .collect(toSchema());
-
   public static final Schema outlierSchema =
       Stream.of(
               Schema.Field.of("subscriber_id", FieldType.STRING).withNullable(true),

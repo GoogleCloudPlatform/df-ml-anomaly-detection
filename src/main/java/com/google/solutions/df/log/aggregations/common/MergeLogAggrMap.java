@@ -27,23 +27,26 @@ public class MergeLogAggrMap extends SimpleFunction<KV<Row, Row>, Row> {
   @Override
   public Row apply(KV<Row, Row> input) {
 
-    return Row.withSchema(Util.bqLogSchema)
-        .addValues(
-            input.getKey().getString("subscriberId"),
-            input.getKey().getString("dstSubnet"),
-            Util.getTimeStamp(),
-            input.getValue().getInt64("number_of_records").intValue(),
-            input.getValue().getInt64("number_of_unique_ips").intValue(),
-            input.getValue().getInt64("number_of_unique_ports").intValue(),
-            input.getValue().getInt32("max_tx_bytes"),
-            input.getValue().getInt32("min_tx_bytes"),
-            input.getValue().getDouble("avg_tx_bytes"),
-            input.getValue().getInt32("max_rx_bytes"),
-            input.getValue().getInt32("min_rx_bytes"),
-            input.getValue().getDouble("avg_rx_bytes"),
-            input.getValue().getInt32("max_duration"),
-            input.getValue().getInt32("min_duration"),
-            input.getValue().getDouble("avg_duration"))
-        .build();
+    Row aggrRow =
+        Row.withSchema(Util.bqLogSchema)
+            .addValues(
+                input.getKey().getString("subscriberId"),
+                input.getKey().getString("dstSubnet"),
+                Util.getTimeStamp(),
+                input.getValue().getInt64("number_of_records").intValue(),
+                input.getValue().getInt64("number_of_unique_ips").intValue(),
+                input.getValue().getInt64("number_of_unique_ports").intValue(),
+                input.getValue().getInt32("max_tx_bytes"),
+                input.getValue().getInt32("min_tx_bytes"),
+                input.getValue().getDouble("avg_tx_bytes"),
+                input.getValue().getInt32("max_rx_bytes"),
+                input.getValue().getInt32("min_rx_bytes"),
+                input.getValue().getDouble("avg_rx_bytes"),
+                input.getValue().getInt32("max_duration"),
+                input.getValue().getInt32("min_duration"),
+                input.getValue().getDouble("avg_duration"))
+            .build();
+    LOG.debug("Aggr Row {}", aggrRow.toString());
+    return aggrRow;
   }
 }
