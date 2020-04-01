@@ -58,7 +58,12 @@ export SUBSCRIPTION_ID=<var>subscription_id</var>
 export TOPIC_ID=<var>topic_id</var>
 export DATA_STORAGE_BUCKET=${PROJECT_ID}-<var>data-storage-bucket</var>
 ```
-
+You can also export DLP template and batch size to enable DLP transformation in the pipeline
+* Batch Size is in bytes and max allowed is less than 520KB/payload
+```
+export DEID_TEMPLATE=projects/{id}/deidentifyTemplates/{template_id}
+export BATCH_SIZE = 350000
+```
 #### Trigger Cloud Build Script
 
 ```
@@ -77,7 +82,18 @@ gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchma
 ```
 ### Publish an outlier with an unusal tx & rx bytes
 ```
-gcloud pubsub topics publish ${TOPIC_ID} --message "{\"subscriberId\": \"my-customer-demo\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.3\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 15000000,\"rxBytes\": 4000000,\"startTime\": 1570276550,\"endTime\": 1570276550,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+gcloud pubsub topics publish events --message  "{\"subscriberId\": \"00000000000000000\", \
+ \"srcIP\": \"12.0.9.4\", \
+ \"dstIP\": \"12.0.1.3\", \
+ \"srcPort\": 5000, \
+ \"dstPort\": 3000, \
+ \"txBytes\": 150000, \
+ \"rxBytes\": 40000, \
+ \"startTime\": 1570276550, \
+ \"endTime\": 1570276550, \
+ \"tcpFlag\": 0, \
+ \"protocolName\": \"tcp\", \
+ \"protocolNumber\": 0}"
 ```
 
 ### Clean up
@@ -245,7 +261,9 @@ group by c.centroid_id);
 1. Find the nearest distance from the centroid.  
 2. Calculate STD DEV between input and centroid vectors 
 3. Find the Z Score (difference between a value in the sample and the mean, and divide it by the standard deviation)
-4. A socre of 2 (2 STD DEV above the mean is an OUTLIER). 
+4. A score of 2 (2 STD DEV above the mean is an OUTLIER). 
+
+![outlier](diagram/outlier.png)
 
 ## Before Start (Optional Step if Cloud Build Script is NOT used)
 
@@ -387,7 +405,7 @@ OUTPUT INFO: row value Row:[1, 1, 2, 12.5, 15, 10, 0]
 
 Pipeline DAG (ToDo: change with updated pipeline DAG)
 
-![dag](diagram/dag_main.png)
+![dag](diagram/df_dag.png)
 
 
 Msg Rate
@@ -487,7 +505,7 @@ Note: Please checkout this [repo](https://github.com/GoogleCloudPlatform/dlp-dat
 
 If you click on DLP Tranformation from the DAG, you will see following sub transforms:
 
-![ref_arch](diagram/dlp_dag.png)
+![ref_arch](diagram/new_dlp_dag.png)
 
 
 

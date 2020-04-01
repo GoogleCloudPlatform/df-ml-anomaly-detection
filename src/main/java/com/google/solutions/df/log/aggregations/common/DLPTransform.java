@@ -306,12 +306,11 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public void processElement(ProcessContext c) {
 
       Row row = c.element().getValue();
-      Double millisTosecs= (c.timestamp().getMillis()*0.001);
+      Double millisTosecs = (c.timestamp().getMillis() * 0.001);
       String key = c.element().getKey().concat("_" + String.valueOf(millisTosecs.intValue()));
       Iterator<Object> rowItr = row.getValues().iterator();
       Table.Row.Builder tableRowBuilder = Table.Row.newBuilder();
       while (rowItr.hasNext()) {
-
         tableRowBuilder.addValues(Value.newBuilder().setStringValue(rowItr.next().toString()));
       }
       Table.Row dlpRow = tableRowBuilder.build();
