@@ -441,7 +441,7 @@ System Latency
 
 To protect any sensitive data in the log,  you can use Cloud DLP to inspect, de-identify before data is stored in BigQuery. This is an optional integration in our reference architecture. To enable, please follow the steps below:
 
-*  Update the JSON file at scripts/deid_imeer_number.json to add the de-identification transformation applicable for your use case. Screen shot below used a crypto based  deterministic transformation to de-identify IMSI number.  To understand how DLP transformation can be used, please refer to this [guide](https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp).  
+*  Update the JSON file at scripts/deid_imei_number.json to add the de-identification transformation applicable for your use case. Screen shot below used a crypto based  deterministic transformation to de-identify IMSI number.  To understand how DLP transformation can be used, please refer to this [guide](https://cloud.google.com/solutions/de-identification-re-identification-pii-using-cloud-dlp).  
 
 ```
 {
@@ -473,11 +473,11 @@ To protect any sensitive data in the log,  you can use Cloud DLP to inspect, de-
          }
       }
    },
-   "templateId":"dlp-deid-subcriber-id"
+   "templateId":"dlp-deid-subscriber-id"
 }
 ```
 
-*  Run this script (deid_tempalte.sh) to create a template in your project.  
+*  Run this script (deid_template.sh) to create a template in your project.  
 
 ```set -x 
 PROJECT_ID=$(gcloud config get-value project)

@@ -59,7 +59,7 @@ public class JsonToRowValidationTransform
     @ProcessElement
     public void processElement(ProcessContext c) {
       String input = c.element();
-      LOG.info("log: {}", input);
+      LOG.debug("log: {}", input);
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
         if (InetAddressValidator.getInstance()

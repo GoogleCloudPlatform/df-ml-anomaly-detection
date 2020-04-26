@@ -23,6 +23,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableList;
 import java.net.URI;
+import java.util.Random;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
@@ -156,5 +157,9 @@ public class Util {
             .toArray();
     StandardDeviation sd = new StandardDeviation();
     return sd.evaluate(differences);
+  }
+
+  public static String randomKeyGenerator(Integer range) {
+    return String.valueOf(new Random().nextInt(range));
   }
 }
