@@ -81,7 +81,7 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
   void setBatchSize(Integer value);
 
   @Description("Ingestion Rate")
-  @Default.Integer(100000)
+  @Default.Integer(250000)
   Integer getIngestionRate();
 
   void setIngestionRate(Integer value);

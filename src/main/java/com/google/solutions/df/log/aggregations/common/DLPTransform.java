@@ -15,6 +15,7 @@
  */
 package com.google.solutions.df.log.aggregations.common;
 
+import avro.shaded.com.google.common.collect.Iterators;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.privacy.dlp.v2.ContentItem;
@@ -142,25 +143,32 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         @StateId("elementsBag") BagState<Table.Row> elementsBag,
         OutputReceiver<Iterable<Table.Row>> output) {
       AtomicInteger bufferSize = new AtomicInteger();
+      AtomicInteger contentItemCount = new AtomicInteger();
+
       List<Table.Row> rows = new ArrayList<>();
       elementsBag
           .read()
           .forEach(
               element -> {
                 Integer elementSize = element.getSerializedSize();
-                boolean clearBuffer = bufferSize.intValue() + elementSize.intValue() > batchSize;
+                boolean clearBuffer =
+                    (bufferSize.intValue() + elementSize.intValue() > batchSize)
+                        || (contentItemCount.get() >= 50000);
                 if (clearBuffer) {
                   numberOfRowsBagged.inc(rows.size());
                   LOG.info("Clear Buffer {}", rows.size());
                   output.output(rows);
                   rows.clear();
                   bufferSize.set(0);
+                  contentItemCount.set(0);
                   rows.add(element);
                   bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
+                  contentItemCount.getAndAdd(1);
 
                 } else {
                   rows.add(element);
                   bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
+                  contentItemCount.getAndAdd(1);
                 }
               });
       if (!rows.isEmpty()) {
@@ -231,21 +239,26 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               .map(header -> FieldId.newBuilder().setName(header).build())
               .collect(Collectors.toList());
 
-      List<Table.Row> rows = new ArrayList<>();
-      c.element().forEach(rows::add);
-      Table dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
-      ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+      Integer contentItemSize = Iterators.size(c.element().iterator());
+      if (contentItemSize > 50000) {
+        LOG.info("Row Elements Count {}", contentItemSize);
 
-      this.requestBuilder.setItem(tableItem);
-      DeidentifyContentResponse response =
-          dlpServiceClient.deidentifyContent(this.requestBuilder.build());
-      Table tokenizedData = response.getItem().getTable();
-      List<Table.Row> outputRows = tokenizedData.getRowsList();
-      outputRows.forEach(
-          row -> {
-            LOG.debug("Tokenized Row {}", row);
-            c.output(row);
-          });
+      } else {
+        Table dlpTable =
+            Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(c.element()).build();
+        ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+
+        this.requestBuilder.setItem(tableItem);
+        DeidentifyContentResponse response =
+            dlpServiceClient.deidentifyContent(this.requestBuilder.build());
+        Table tokenizedData = response.getItem().getTable();
+        List<Table.Row> outputRows = tokenizedData.getRowsList();
+        outputRows.forEach(
+            row -> {
+              LOG.debug("Tokenized Row {}", row);
+              c.output(row);
+            });
+      }
     }
   }
 

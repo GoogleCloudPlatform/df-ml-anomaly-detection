@@ -68,7 +68,8 @@ public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Ro
                     .aggregateField("duration", new AvgCombineFn(), "avg_duration")
                     .aggregateField("duration", Max.ofIntegers(), "max_duration")
                     .aggregateField("duration", Min.ofIntegers(), "min_duration"))
-            .apply("Merge Aggr Row", MapElements.via(new MergeLogAggrMap())).setRowSchema(Util.bqLogSchema);
+            .apply("Merge Aggr Row", MapElements.via(new MergeLogAggrMap()))
+            .setRowSchema(Util.bqLogSchema);
 
     return aggrRow;
   }
