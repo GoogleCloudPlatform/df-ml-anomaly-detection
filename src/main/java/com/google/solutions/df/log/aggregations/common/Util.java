@@ -160,6 +160,6 @@ public class Util {
   }
 
   public static String randomKeyGenerator(Integer range) {
-    return String.valueOf(new Random().nextInt(range));
+    return String.valueOf(new Random().nextInt(range*100));
   }
 }

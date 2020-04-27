@@ -143,7 +143,6 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
         @StateId("elementsBag") BagState<Table.Row> elementsBag,
         OutputReceiver<Iterable<Table.Row>> output) {
       AtomicInteger bufferSize = new AtomicInteger();
-      AtomicInteger contentItemCount = new AtomicInteger();
 
       List<Table.Row> rows = new ArrayList<>();
       elementsBag
@@ -152,23 +151,19 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               element -> {
                 Integer elementSize = element.getSerializedSize();
                 boolean clearBuffer =
-                    (bufferSize.intValue() + elementSize.intValue() > batchSize)
-                        || (contentItemCount.get() >= 50000);
+                    (bufferSize.intValue() + elementSize.intValue() > batchSize);
                 if (clearBuffer) {
                   numberOfRowsBagged.inc(rows.size());
                   LOG.info("Clear Buffer {}", rows.size());
                   output.output(rows);
                   rows.clear();
                   bufferSize.set(0);
-                  contentItemCount.set(0);
                   rows.add(element);
                   bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
-                  contentItemCount.getAndAdd(1);
 
                 } else {
                   rows.add(element);
                   bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
-                  contentItemCount.getAndAdd(1);
                 }
               });
       if (!rows.isEmpty()) {
@@ -238,16 +233,10 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           Util.bqLogSchema.getFieldNames().stream()
               .map(header -> FieldId.newBuilder().setName(header).build())
               .collect(Collectors.toList());
-
-      Integer contentItemSize = Iterators.size(c.element().iterator());
-      if (contentItemSize > 50000) {
-        LOG.info("Row Elements Count {}", contentItemSize);
-
-      } else {
+      
         Table dlpTable =
             Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(c.element()).build();
         ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
-
         this.requestBuilder.setItem(tableItem);
         DeidentifyContentResponse response =
             dlpServiceClient.deidentifyContent(this.requestBuilder.build());
@@ -258,7 +247,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
               LOG.debug("Tokenized Row {}", row);
               c.output(row);
             });
-      }
+      
     }
   }
 
