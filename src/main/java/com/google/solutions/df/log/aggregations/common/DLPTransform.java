@@ -15,6 +15,7 @@
  */
 package com.google.solutions.df.log.aggregations.common;
 
+import avro.shaded.com.google.common.collect.Iterators;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.privacy.dlp.v2.ContentItem;
@@ -29,6 +30,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.metrics.Counter;
@@ -40,17 +42,16 @@ import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.TimerSpec;
 import org.apache.beam.sdk.state.TimerSpecs;
-import org.apache.beam.sdk.state.ValueState;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,9 +125,6 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     @StateId("elementsBag")
     private final StateSpec<BagState<Table.Row>> elementsBag = StateSpecs.bag();
 
-    @StateId("elementsSize")
-    private final StateSpec<ValueState<Integer>> elementsSize = StateSpecs.value();
-
     @TimerId("eventTimer")
     private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
@@ -134,63 +132,45 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
     public void process(
         @Element KV<String, Table.Row> element,
         @StateId("elementsBag") BagState<Table.Row> elementsBag,
-        @StateId("elementsSize") ValueState<Integer> elementsSize,
-        @Timestamp Instant elementTs,
         @TimerId("eventTimer") Timer eventTimer,
-        OutputReceiver<Iterable<Table.Row>> output) {
-      eventTimer.set(elementTs);
-      Integer currentElementSize =
-          (element.getValue() == null) ? 0 : element.getValue().getSerializedSize();
-      Integer currentBufferSize = (elementsSize.read() == null) ? 0 : elementsSize.read();
-      boolean clearBuffer = (currentElementSize + currentBufferSize) > batchSize;
-      LOG.debug(
-          "Clear Buffer {}, Curret Elements Size {}, currentBufferSize {}",
-          clearBuffer,
-          currentElementSize,
-          currentBufferSize);
-      if (clearBuffer) {
-        Iterable<Table.Row> inspectBufferedData = elementsBag.read();
-        output.output(inspectBufferedData);
-        LOG.debug("****CLEAR BUFFER **** Current Buffer Size {}", elementsSize.read());
-        clearState(elementsBag, elementsSize);
-        clearBuffer = false;
-        currentBufferSize = 0;
-        addState(elementsBag, elementsSize, element, currentElementSize + currentBufferSize);
-        numberOfRowsBagged.inc();
-
-      } else {
-        addState(elementsBag, elementsSize, element, currentElementSize + currentBufferSize);
-        numberOfRowsBagged.inc();
-      }
+        BoundedWindow w) {
+      elementsBag.add(element.getValue());
+      eventTimer.set(w.maxTimestamp());
     }
 
     @OnTimer("eventTimer")
     public void onTimer(
         @StateId("elementsBag") BagState<Table.Row> elementsBag,
-        @StateId("elementsSize") ValueState<Integer> elementsSize,
         OutputReceiver<Iterable<Table.Row>> output) {
-      // Process left over records less than  batch size
-      Iterable<Table.Row> inspectBufferedData = elementsBag.read();
-      if (elementsSize.read() < batchSize) output.output(inspectBufferedData);
-      else {
-        LOG.error("Element Size {} is Larger than batch size {}", elementsSize.read(), batchSize);
+      AtomicInteger bufferSize = new AtomicInteger();
+
+      List<Table.Row> rows = new ArrayList<>();
+      elementsBag
+          .read()
+          .forEach(
+              element -> {
+                Integer elementSize = element.getSerializedSize();
+                boolean clearBuffer =
+                    (bufferSize.intValue() + elementSize.intValue() > batchSize);
+                if (clearBuffer) {
+                  numberOfRowsBagged.inc(rows.size());
+                  LOG.info("Clear Buffer {}", rows.size());
+                  output.output(rows);
+                  rows.clear();
+                  bufferSize.set(0);
+                  rows.add(element);
+                  bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
+
+                } else {
+                  rows.add(element);
+                  bufferSize.getAndAdd(Integer.valueOf(element.getSerializedSize()));
+                }
+              });
+      if (!rows.isEmpty()) {
+        LOG.info("Remaining rows {}", rows.size());
+        numberOfRowsBagged.inc(rows.size());
+        output.output(rows);
       }
-      LOG.debug("****Timer Triggered **** Current Buffer Size {}", elementsSize.read(), batchSize);
-    }
-
-    private static void clearState(
-        BagState<Table.Row> elementsBag, ValueState<Integer> elementsSize) {
-      elementsBag.clear();
-      elementsSize.clear();
-    }
-
-    private static void addState(
-        BagState<Table.Row> elementsBag,
-        ValueState<Integer> elementsSize,
-        KV<String, Table.Row> element,
-        Integer size) {
-      elementsBag.add(element.getValue());
-      elementsSize.write(size);
     }
   }
 
@@ -253,22 +233,21 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           Util.bqLogSchema.getFieldNames().stream()
               .map(header -> FieldId.newBuilder().setName(header).build())
               .collect(Collectors.toList());
-
-      List<Table.Row> rows = new ArrayList<>();
-      c.element().forEach(rows::add);
-      Table dlpTable = Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(rows).build();
-      ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
-
-      this.requestBuilder.setItem(tableItem);
-      DeidentifyContentResponse response =
-          dlpServiceClient.deidentifyContent(this.requestBuilder.build());
-      Table tokenizedData = response.getItem().getTable();
-      List<Table.Row> outputRows = tokenizedData.getRowsList();
-      outputRows.forEach(
-          row -> {
-            LOG.debug("Tokenized Row {}", row);
-            c.output(row);
-          });
+      
+        Table dlpTable =
+            Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(c.element()).build();
+        ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+        this.requestBuilder.setItem(tableItem);
+        DeidentifyContentResponse response =
+            dlpServiceClient.deidentifyContent(this.requestBuilder.build());
+        Table tokenizedData = response.getItem().getTable();
+        List<Table.Row> outputRows = tokenizedData.getRowsList();
+        outputRows.forEach(
+            row -> {
+              LOG.debug("Tokenized Row {}", row);
+              c.output(row);
+            });
+      
     }
   }
 

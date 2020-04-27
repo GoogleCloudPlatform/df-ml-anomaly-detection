@@ -80,6 +80,12 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setBatchSize(Integer value);
 
+  @Description("Ingestion Rate")
+  @Default.Integer(250000)
+  Integer getIngestionRate();
+
+  void setIngestionRate(Integer value);
+
   @Description("DLP Inspect Tempalte Name")
   String getInspectTemplateName();
 
