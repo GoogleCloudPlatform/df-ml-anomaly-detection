@@ -2,3 +2,4 @@
   "mainClass": "com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline",
   "classPath": "/template/df-log-streaming-template/libs/*:/template/df-log-streaming-template/classes"
 }
+
