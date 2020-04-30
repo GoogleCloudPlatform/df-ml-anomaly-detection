@@ -1,5 +1,6 @@
 {
-  "docker_template_spec": {
-    "docker_image": "gcr.io/cloud-solutions-images/df-log-streaming-pipeline:latest"
-  }
+	"image": "gcr.io/[project-id]/df-ml-anomaly-detection",
+	"sdk_info": {
+			"language": "JAVA"
+		}
 }

@@ -15,7 +15,6 @@
  */
 package com.google.solutions.df.log.aggregations.common;
 
-import avro.shaded.com.google.common.collect.Iterators;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.dlp.v2.DlpServiceClient;
 import com.google.privacy.dlp.v2.ContentItem;
@@ -150,8 +149,7 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           .forEach(
               element -> {
                 Integer elementSize = element.getSerializedSize();
-                boolean clearBuffer =
-                    (bufferSize.intValue() + elementSize.intValue() > batchSize);
+                boolean clearBuffer = (bufferSize.intValue() + elementSize.intValue() > batchSize);
                 if (clearBuffer) {
                   numberOfRowsBagged.inc(rows.size());
                   LOG.info("Clear Buffer {}", rows.size());
@@ -233,21 +231,20 @@ public abstract class DLPTransform extends PTransform<PCollection<Row>, PCollect
           Util.bqLogSchema.getFieldNames().stream()
               .map(header -> FieldId.newBuilder().setName(header).build())
               .collect(Collectors.toList());
-      
-        Table dlpTable =
-            Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(c.element()).build();
-        ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
-        this.requestBuilder.setItem(tableItem);
-        DeidentifyContentResponse response =
-            dlpServiceClient.deidentifyContent(this.requestBuilder.build());
-        Table tokenizedData = response.getItem().getTable();
-        List<Table.Row> outputRows = tokenizedData.getRowsList();
-        outputRows.forEach(
-            row -> {
-              LOG.debug("Tokenized Row {}", row);
-              c.output(row);
-            });
-      
+
+      Table dlpTable =
+          Table.newBuilder().addAllHeaders(dlpTableHeaders).addAllRows(c.element()).build();
+      ContentItem tableItem = ContentItem.newBuilder().setTable(dlpTable).build();
+      this.requestBuilder.setItem(tableItem);
+      DeidentifyContentResponse response =
+          dlpServiceClient.deidentifyContent(this.requestBuilder.build());
+      Table tokenizedData = response.getItem().getTable();
+      List<Table.Row> outputRows = tokenizedData.getRowsList();
+      outputRows.forEach(
+          row -> {
+            LOG.debug("Tokenized Row {}", row);
+            c.output(row);
+          });
     }
   }
 
