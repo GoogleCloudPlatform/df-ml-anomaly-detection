@@ -104,6 +104,12 @@ dependencies {
 
 
 }
+// Force the version of guava required by Beam
+configurations.all {
+  resolutionStrategy {
+    force 'com.google.guava:guava:25.1-jre'
+  }
+}
 
 jar {
     manifest {
