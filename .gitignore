@@ -24,7 +24,7 @@
 .mtj.tmp/
 
 # Package Files #
-*.jar
+# *.jar
 *.war
 *.nar
 *.ear
@@ -38,7 +38,7 @@ hs_err_pid*
 *.iml
 *.ipr
 *.iws
-*.jar
+# *.jar
 *.sw?
 *~
 .#*
@@ -73,7 +73,7 @@ transaction-logs
 secrets.yml
 .gradletasknamecache
 .sts4-cache# Package Files #
-*.jar
+# *.jar
 *.war
 *.nar
 *.ear
