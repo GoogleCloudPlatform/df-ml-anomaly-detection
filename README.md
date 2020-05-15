@@ -299,7 +299,7 @@ Outlier Table
 ```
 bq mk -t --schema outlier_table_schema.json \
 --label myorg:prod \
-<project>:<dataset_name>network_logs.outlier_data 
+<project>:<dataset_name>.network_logs.outlier_data 
 ```
 
 ## Build & Run
@@ -308,29 +308,37 @@ To Build
 ```
 gradle spotlessApply -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
 gradle build -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline 
+
+gcloud auth configure-docker
+gradle jib --image=gcr.io/${PROJECT_ID}/df-ml-anomaly-detection:latest -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline
+
 ```
 
 To Run  
 
 ```
-gradle run -DmainClass=com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline \ -Pargs="--streaming --project=<project_id> \ 
---runner=DataflowRunner 
---autoscalingAlgorithm=NONE \ 
---numWorkers=5 \
---maxNumWorkers=5 \
---workerMachineType=n1-highmem-8  \
---subscriberId=projects/<project_id>subscriptions/<sub_id> \
---tableSpec=<project>:<dataset_name>.cluster_model_data \ 
---region=us-central1  \ 
---batchFrequency=10 \ 
---customGcsTempLocation=gs://<bucket_name>/file_load \
---clusterQuery=gs://<bucket_name>/normalized_cluster_data.sql \ 
---outlierTableSpec=<project>:<dataset_name>outlier_data \
---windowInterval=5 \
---tempLocation=gs://<bucket_name>/temp \ 
---writeMethod=FILE_LOADS \ 
---diskSizeGb=50 \ 
---workerDiskType=compute.googleapis.com/projects/<project_id>/zones/us-central1-b/diskTypes/pd-ssd"
+gcloud beta dataflow flex-template run "anomaly-detection" \
+--project=${PROJECT_ID} \
+--region=us-central1 \
+--template-file-gcs-location=gs://${DF_TEMPLATE_CONFIG_BUCKET}/dynamic_template_secure_log_aggr_template.json \
+--parameters=autoscalingAlgorithm="NONE",\
+numWorkers=5,\
+maxNumWorkers=5,\
+workerMachineType=n1-highmem-4,\
+subscriberId=projects/${PROJECT_ID}/subscriptions/${SUBSCRIPTION_ID},\
+tableSpec=${PROJECT_ID}:${DATASET_NAME}.cluster_model_data,\
+batchFrequency=2,\
+customGcsTempLocation=gs://${DF_TEMPLATE_CONFIG_BUCKET}/temp,\
+tempLocation=gs://${DF_TEMPLATE_CONFIG_BUCKET}/temp,\
+clusterQuery=gs://${DF_TEMPLATE_CONFIG_BUCKET}/normalized_cluster_data.sql,\
+outlierTableSpec=${PROJECT_ID}:${DATASET_NAME}.outlier_data,\
+inputFilePattern=gs://df-ml-anomaly-detection-mock-data/flow_log*.json,\
+workerDiskType=compute.googleapis.com/projects/${PROJECT_ID}/zones/us-central1-b/diskTypes/pd-ssd,\
+diskSizeGb=5,\
+windowInterval=10,\
+writeMethod=FILE_LOADS,\
+streaming=true
+
 ```
 
 ## Test 
@@ -359,19 +367,10 @@ Schema used for load test:
 To Run: 
 
 ```
-gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
- -Pargs="--streaming \
- --runner=DataflowRunner \
- --project=<project_id>  \
- --autoscalingAlgorithm=NONE \
- --workerMachineType=n1-standard-4 \
- --numWorkers=50  \
- --maxNumWorkers=50  \
- --qps=250000 \
- --schemaLocation=gs://<path>.json \
- --eventType=netflow-log-event  \
- --topic=projects/<project_id>/topics/<topic_id> \ 
- --region=us-central1"
+export PROJECT_ID=$(gcloud config get-value project)
+export TOPIC_ID=<var>topic-id</var>
+gcloud pubsub topics create $TOPIC_ID
+gcloud builds submit . --machine-type=n1-highcpu-8 --config scripts/cloud-build-data-generator.yaml  --substitutions _TOPIC_ID=${TOPIC_ID}
 ``` 
 
 Outlier Test 
@@ -389,7 +388,7 @@ Feature Extraction Test
 gcloud pubsub topics publish <topic_id> \
 --message "{\"subscriberId\": \"100\",\"srcIP\": \"12.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5000,\"dstPort\": 3000,\"txBytes\": 10,\"rxBytes\": 40,\"startTime\": 1570276550,\"endTime\": 1570276559,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 gcloud pubsub topics publish <topic_id> \
- --message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
+--message "{\"subscriberId\": \"100\",\"srcIP\": \"13.0.9.4\",\"dstIP\": \"12.0.1.2\",\"srcPort\": 5001,\"dstPort\": 3000,\"txBytes\": 15,\"rxBytes\": 40,\"startTime\": 1570276650,\"endTime\": 1570276750,\"tcpFlag\": 0,\"protocolName\": \"tcp\",\"protocolNumber\": 0}"
 OUTPUT: INFO: row value Row:[2, 2, 2, 12.5, 15, 10, 50]
 ```
 
@@ -473,7 +472,7 @@ To protect any sensitive data in the log,  you can use Cloud DLP to inspect, de-
          }
       }
    },
-   "templateId":"dlp-deid-subscriber-id"
+   "templateId":"dlp-deid-subid"
 }
 ```
 
@@ -496,7 +495,7 @@ curl -X POST -H "Content-Type: application/json" \
 *  Pass the DLP template name Dataflow pipeline. 
 
 ```export DEID_TEMPLATE_NAME=$(jq -r '.name' deid-template.json);echo $DEID_TEMPLATE_NAME
---deidTemplateName=projects/<project_id>/deidentifyTemplates/dlp-deid-subcriber-id"
+--deidTemplateName=projects/<project_id>/deidentifyTemplates/dlp-deid-subid"
 ```
 
 Note: Please checkout this [repo](https://github.com/GoogleCloudPlatform/dlp-dataflow-deidentification) to learn more about a end to end data tokenization solution. 
