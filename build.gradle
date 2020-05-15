@@ -92,7 +92,7 @@ dependencies {
 	compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
 	compile group: 'commons-validator', name: 'commons-validator', version: '1.4.0'
 	compile 'commons-net:commons-net:3.6'
-    compile group: 'com.google.cloud', name: 'google-cloud-dlp', version: '1.1.2'
+    compile group: 'com.google.cloud', name: 'google-cloud-dlp', version: '1.1.4'
     compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'	
 	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
 	testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
