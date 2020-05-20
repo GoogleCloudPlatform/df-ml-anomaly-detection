@@ -64,14 +64,8 @@ public interface FraudDetectionFinServTranPipelineOptions extends DataflowPipeli
 
   void setInputFilePattern(String value);
 
-  @Description("Ingestion Rate")
-  @Default.Integer(250000)
-  Integer getIngestionRate();
-
-  void setIngestionRate(Integer value);
-
-  @Description("Batch Size")
-  @Default.Integer(1000)
+  @Description("Batch Size in Bytes")
+  @Default.Integer(50000)
   Integer getBatchSize();
 
   void setBatchSize(Integer value);

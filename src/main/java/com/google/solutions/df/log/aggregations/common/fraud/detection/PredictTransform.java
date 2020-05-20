@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.google.solutions.df.log.aggregations.common.fraud.detection;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -36,7 +51,6 @@ import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.TimerSpec;
 import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
@@ -96,18 +110,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         .apply("AddKey", WithKeys.of(new Random().nextInt(randomKey())))
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
         .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())))
-        .apply("JsontoRow", JsonToRow.withSchema(Util.prerdictonOutputSchema))
-        .setRowSchema(Util.prerdictonOutputSchema)
-        .apply(
-            "Print",
-            ParDo.of(
-                new DoFn<Row, Row>() {
-                  @ProcessElement
-                  public void processElement(ProcessContext c) {
-                    LOG.info("Row BQ {}", c.element());
-                    c.output(c.element());
-                  }
-                }));
+        .setRowSchema(Util.prerdictonOutputSchema);
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
@@ -175,7 +178,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     return builder.toString();
   }
 
-  public static class PredictRemote extends DoFn<String, String> {
+  public static class PredictRemote extends DoFn<String, Row> {
 
     private String projectId;
     private String modelId;
@@ -184,6 +187,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private String contentType;
     private RestMethod method;
     private HttpTransport httpTransport;
+    private GoogleCredential credential;
+    private Gson json;
 
     public PredictRemote(String projectId, String modelId, String versionId) {
       this.projectId = projectId;
@@ -204,33 +209,40 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
           "name",
           String.format("projects/%s/models/%s/versions/%s", projectId, modelId, versionId));
       url = new GenericUrl(UriTemplate.expand(api.getBaseUrl() + method.getPath(), param, true));
+      credential = GoogleCredential.getApplicationDefault().createScoped(scope);
       LOG.info("Url {}", url.toString());
+    }
+
+    @StartBundle
+    public void startBundle() {
+      json = new Gson();
     }
 
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
 
       HttpContent content = new ByteArrayContent(contentType, c.element().getBytes());
-
-      GoogleCredential credential = GoogleCredential.getApplicationDefault().createScoped(scope);
       HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
       HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
       String response = request.execute().parseAsString();
-      JsonObject convertedObject = new Gson().fromJson(response, JsonObject.class);
+      JsonObject convertedObject = json.fromJson(response, JsonObject.class);
       convertedObject
           .getAsJsonArray("predictions")
           .forEach(
               element -> {
-                LOG.debug("row {}", element.toString());
-                c.output(element.toString());
-                element.getAsJsonObject().get("transactionId").toString();
-                element.getAsJsonObject().get("logistic");
-                Row.withSchema(Util.prerdictonOutputSchema)
-                    .addValues(
-                        element.getAsJsonObject().get("transactionId").toString(),
-                        element.getAsJsonObject().get("logistic"),
-                        convertedObject.toString())
-                    .build();
+                String transactionId =
+                    element
+                        .getAsJsonObject()
+                        .get("transactionId")
+                        .getAsJsonArray()
+                        .get(0)
+                        .getAsString();
+                Double logistic =
+                    element.getAsJsonObject().get("logistic").getAsJsonArray().get(0).getAsDouble();
+                c.output(
+                    Row.withSchema(Util.prerdictonOutputSchema)
+                        .addValues(transactionId, logistic, convertedObject.toString())
+                        .build());
               });
     }
   }
