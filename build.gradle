@@ -46,8 +46,8 @@ apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
 
-mainClassName = System.getProperty("mainClass")
-//mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
+//mainClassName = System.getProperty("mainClass")
+mainClassName = 'com.google.solutions.df.log.aggregations.FraudDetectionFinServTranPipeline' 
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'

@@ -1,13 +1,12 @@
 package com.google.solutions.df.log.aggregations.common.fraud.detection;
 
-import com.google.api.client.googleapis.auth.oauth2.*;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpContent;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.UriTemplate;
 import com.google.api.client.json.JsonFactory;
@@ -17,14 +16,18 @@ import com.google.api.services.discovery.model.JsonSchema;
 import com.google.api.services.discovery.model.RestDescription;
 import com.google.api.services.discovery.model.RestMethod;
 import com.google.auto.value.AutoValue;
-import java.io.BufferedReader;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+import org.apache.beam.sdk.schemas.transforms.DropFields;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
@@ -33,8 +36,10 @@ import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.TimerSpec;
 import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.transforms.WithKeys;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.values.KV;
@@ -45,9 +50,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class PredictTransform extends PTransform<PCollection<String>, PCollection<Row>> {
+public abstract class PredictTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(PredictTransform.class);
-  private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+  public static final List<String> scope =
+      Arrays.asList("https://www.googleapis.com/auth/cloud-platform");
 
   public abstract Integer batchSize();
 
@@ -80,15 +86,31 @@ public abstract class PredictTransform extends PTransform<PCollection<String>, P
   }
 
   @Override
-  public PCollection<Row> expand(PCollection<String> input) {
+  public PCollection<Row> expand(PCollection<Row> input) {
 
     return input
-        .apply("Add Key", WithKeys.of(new Random().nextInt(randomKey())))
+        .apply(
+            "ModifySchema", DropFields.fields("nameOrig", "nameDest", "isFlaggedFraud", "isFraud"))
+        .setRowSchema(Util.prerdictonInputSchema)
+        .apply("RowToJson", ToJson.of())
+        .apply("AddKey", WithKeys.of(new Random().nextInt(randomKey())))
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
-        .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())));
+        .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())))
+        .apply("JsontoRow", JsonToRow.withSchema(Util.prerdictonOutputSchema))
+        .setRowSchema(Util.prerdictonOutputSchema)
+        .apply(
+            "Print",
+            ParDo.of(
+                new DoFn<Row, Row>() {
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    LOG.info("Row BQ {}", c.element());
+                    c.output(c.element());
+                  }
+                }));
   }
 
-  public static class BatchRequest extends DoFn<KV<Integer, String>, Iterable<String>> {
+  public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
     private Integer batchSize;
 
     public BatchRequest(Integer batchSize) {
@@ -113,8 +135,7 @@ public abstract class PredictTransform extends PTransform<PCollection<String>, P
 
     @OnTimer("eventTimer")
     public void onTimer(
-        @StateId("elementsBag") BagState<String> elementsBag,
-        OutputReceiver<Iterable<String>> output) {
+        @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
       AtomicInteger bufferSize = new AtomicInteger();
       List<String> rows = new ArrayList<>();
       elementsBag
@@ -124,8 +145,8 @@ public abstract class PredictTransform extends PTransform<PCollection<String>, P
                 Integer elementSize = element.getBytes().length;
                 boolean clearBuffer = (bufferSize.intValue() + elementSize.intValue() > batchSize);
                 if (clearBuffer) {
-                  output.output(rows);
-                  LOG.info("Clearing Rows {}", rows.size());
+                  LOG.debug("Clearing Rows {}", rows.size());
+                  output.output(emitResult(rows));
                   rows.clear();
                   bufferSize.set(0);
                   rows.add(element);
@@ -137,13 +158,24 @@ public abstract class PredictTransform extends PTransform<PCollection<String>, P
                 }
               });
       if (!rows.isEmpty()) {
-        LOG.info("Remaning Rows {}", rows.size());
-        output.output(rows);
+        LOG.debug("Remaning Rows {}", rows.size());
+        output.output(emitResult(rows));
       }
     }
   }
 
-  public static class PredictRemote extends DoFn<Iterable<String>, Row> {
+  public static String emitResult(Iterable<String> records) {
+
+    StringBuilder builder = new StringBuilder();
+    builder.append("{\"signature_name\":\"predict\",\"instances\": [");
+    builder.append("\n");
+    builder.append(
+        StreamSupport.stream(records.spliterator(), false).collect(Collectors.joining(", ")));
+    builder.append("\n]}");
+    return builder.toString();
+  }
+
+  public static class PredictRemote extends DoFn<String, String> {
 
     private String projectId;
     private String modelId;
@@ -178,36 +210,28 @@ public abstract class PredictTransform extends PTransform<PCollection<String>, P
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
 
-      StringBuilder builder = new StringBuilder();
-      builder.append("{\"instances\": [");
-      builder.append("\n");
-      
-      
-      c.element()
-          .forEach(
-              row -> {
-                builder.append(row);
-                builder.append(",");
-                builder.append("\n");
-              });
-      builder.append("]}");
-      LOG.info("request {}",builder.toString());
-      HttpContent content = new ByteArrayContent("application/json", builder.toString().getBytes());
-      List<String> scopes = new ArrayList<>();
-      scopes.add("https://www.googleapis.com/auth/cloud-platform");
+      HttpContent content = new ByteArrayContent(contentType, c.element().getBytes());
 
-      GoogleCredential credential = GoogleCredential.getApplicationDefault().createScoped(scopes);
-      // GoogleCredential credential = GoogleCredential.getApplicationDefault();
+      GoogleCredential credential = GoogleCredential.getApplicationDefault().createScoped(scope);
       HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
       HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
-
-      HttpResponse response = request.execute();
-      BufferedReader reader =
-          new BufferedReader(new InputStreamReader(response.getContent(), "utf-8"), 8);
-      String line = null;
-      while ((line = reader.readLine()) != null) {
-        LOG.info("Line {}", line);
-      }
+      String response = request.execute().parseAsString();
+      JsonObject convertedObject = new Gson().fromJson(response, JsonObject.class);
+      convertedObject
+          .getAsJsonArray("predictions")
+          .forEach(
+              element -> {
+                LOG.debug("row {}", element.toString());
+                c.output(element.toString());
+                element.getAsJsonObject().get("transactionId").toString();
+                element.getAsJsonObject().get("logistic");
+                Row.withSchema(Util.prerdictonOutputSchema)
+                    .addValues(
+                        element.getAsJsonObject().get("transactionId").toString(),
+                        element.getAsJsonObject().get("logistic"),
+                        convertedObject.toString())
+                    .build();
+              });
     }
   }
 }

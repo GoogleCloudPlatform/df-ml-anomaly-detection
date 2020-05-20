@@ -21,10 +21,8 @@ import com.google.gson.JsonObject;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
-import org.apache.beam.sdk.transforms.DoFn.Setup;
 import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Watch.Growth;
@@ -32,13 +30,14 @@ import org.apache.beam.sdk.transforms.WithTimestamps;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
+import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
-public abstract class ReadTransactionTransform extends PTransform<PBegin, PCollection<String>> {
+public abstract class ReadTransactionTransform extends PTransform<PBegin, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(ReadTransactionTransform.class);
 
   public abstract String subscriber();
@@ -63,7 +62,7 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
   }
 
   @Override
-  public PCollection<String> expand(PBegin input) {
+  public PCollection<Row> expand(PBegin input) {
 
     PCollection<String> fileRow =
         input
@@ -78,7 +77,8 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
     return PCollectionList.of(fileRow)
         .and(pubsubMessage)
         .apply(Flatten.<String>pCollections())
-        .apply("Convert To Json", ParDo.of(new JsonValidatorFn()));
+        .apply("ValidateJson", ParDo.of(new JsonValidatorFn()))
+        .apply("JsonToRow", JsonToRow.withSchema(Util.transactionSchema));
   }
 
   public static class JsonValidatorFn extends DoFn<String, String> {
