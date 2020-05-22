@@ -64,19 +64,19 @@ public class FraudDetectionFinServTranPipeline {
                 .setProjectId(options.getProject())
                 .setRandomKey(options.getKeyRange())
                 .build());
-    transaction.apply(
-        "StreamTransactionData",
-        BQWriteTransform.newBuilder()
-            .setTableSpec(options.getTableSpec())
-            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-            .build());
+//    transaction.apply(
+//        "StreamTransactionData",
+//        BQWriteTransform.newBuilder()
+//            .setTableSpec(options.getTableSpec())
+//            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+//            .build());
 
-    predictionData.apply(
-        "StreamFraudData",
-        BQWriteTransform.newBuilder()
-            .setTableSpec(options.getOutlierTableSpec())
-            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-            .build());
+//    predictionData.apply(
+//        "StreamFraudData",
+//        BQWriteTransform.newBuilder()
+//            .setTableSpec(options.getOutlierTableSpec())
+//            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+//            .build());
     return p.run();
   }
 }

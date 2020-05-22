@@ -110,7 +110,14 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         .apply("AddKey", WithKeys.of(new Random().nextInt(randomKey())))
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
         .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())))
-        .setRowSchema(Util.prerdictonOutputSchema);
+        .setRowSchema(Util.prerdictonOutputSchema)
+        .apply("Print", ParDo.of(new DoFn <Row, Row>(){
+        	@ProcessElement
+        	public void processContext(ProcessContext c) {
+        		//LOG.info(c.element().toString());
+        		c.output(c.element());
+        	}
+        }));
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
