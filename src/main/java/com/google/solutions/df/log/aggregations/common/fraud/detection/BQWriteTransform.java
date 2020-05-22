@@ -21,6 +21,7 @@ import com.google.auto.value.AutoValue;
 import java.util.Arrays;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -77,10 +78,7 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withCustomGcsTempLocation(gcsTempLocation())
                 .withTriggeringFrequency(Duration.standardMinutes(batchFrequency()))
-                .withNumFileShards(NUM_OF_SHARDS)
-                .withClustering(
-                    new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+                .withNumFileShards(NUM_OF_SHARDS));
 
       case STREAMING_INSERTS:
         return row.apply(
@@ -88,7 +86,8 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
                 .to(tableSpec())
                 .useBeamSchema()
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
+                .withFailedInsertRetryPolicy(InsertRetryPolicy.neverRetry()));
 
       default:
         return row.apply(

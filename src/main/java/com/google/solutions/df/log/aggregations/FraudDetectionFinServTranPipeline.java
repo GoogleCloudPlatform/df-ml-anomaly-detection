@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class FraudDetectionFinServTranPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(FraudDetectionFinServTranPipeline.class);
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);
 
   public static void main(String args[]) {
 
@@ -64,19 +64,19 @@ public class FraudDetectionFinServTranPipeline {
                 .setProjectId(options.getProject())
                 .setRandomKey(options.getKeyRange())
                 .build());
-//    transaction.apply(
-//        "StreamTransactionData",
-//        BQWriteTransform.newBuilder()
-//            .setTableSpec(options.getTableSpec())
-//            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-//            .build());
+    transaction.apply(
+        "StreamTransactionData",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getTableSpec())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+            .build());
 
-//    predictionData.apply(
-//        "StreamFraudData",
-//        BQWriteTransform.newBuilder()
-//            .setTableSpec(options.getOutlierTableSpec())
-//            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-//            .build());
+    predictionData.apply(
+        "StreamFraudData",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getOutlierTableSpec())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+            .build());
     return p.run();
   }
 }
