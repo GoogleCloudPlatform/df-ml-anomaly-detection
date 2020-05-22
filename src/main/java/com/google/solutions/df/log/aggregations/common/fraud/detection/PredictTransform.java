@@ -46,10 +46,6 @@ import org.apache.beam.sdk.schemas.transforms.DropFields;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
-import org.apache.beam.sdk.state.TimeDomain;
-import org.apache.beam.sdk.state.Timer;
-import org.apache.beam.sdk.state.TimerSpec;
-import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -124,22 +120,22 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     @StateId("elementsBag")
     private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
 
-    @TimerId("eventTimer")
-    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
+    //    @TimerId("eventTimer")
+    //    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
     @ProcessElement
     public void process(
         @Element KV<Integer, String> element,
         @StateId("elementsBag") BagState<String> elementsBag,
-        @TimerId("eventTimer") Timer eventTimer,
+        // @TimerId("eventTimer") Timer eventTimer,
         BoundedWindow w) {
       elementsBag.add(element.getValue());
-      //eventTimer.set(w.maxTimestamp());
-      eventTimer.offset(Duration.standardSeconds(5)).setRelative();
+      // eventTimer.set(w.maxTimestamp());
+      // eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
 
-    @OnTimer("eventTimer")
-    public void onTimer(
+    @OnWindowExpiration
+    public void onWindowExpiration(
         @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
       AtomicInteger bufferSize = new AtomicInteger();
       List<String> rows = new ArrayList<>();
@@ -177,7 +173,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     builder.append(
         StreamSupport.stream(records.spliterator(), false).collect(Collectors.joining(",")));
     builder.append("\n]}");
-    LOG.debug("Builder Size {}",builder.toString().getBytes().length);
+    LOG.debug("Builder Size {}", builder.toString().getBytes().length);
     return builder.toString();
   }
 
@@ -200,7 +196,6 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       this.contentType = "application/json";
     }
 
-
     @StartBundle
     public void startBundle() throws GeneralSecurityException, IOException {
       json = new Gson();
@@ -217,10 +212,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       credential = GoogleCredential.getApplicationDefault().createScoped(scope);
       LOG.info("Url {}", url.toString());
     }
-   @FinishBundle
-   public void finishBundle() {
-	  
-   }
+
+    @FinishBundle
+    public void finishBundle() {}
+
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
 
@@ -242,13 +237,13 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                         .getAsString();
                 Double logistic =
                     element.getAsJsonObject().get("logistic").getAsJsonArray().get(0).getAsDouble();
-             
-                Row row = Row.withSchema(Util.prerdictonOutputSchema)
+
+                Row row =
+                    Row.withSchema(Util.prerdictonOutputSchema)
                         .addValues(transactionId, logistic, element.toString())
                         .build();
                 LOG.debug("Predict Output {}", row.toString());
                 c.output(row);
-                
               });
     }
   }

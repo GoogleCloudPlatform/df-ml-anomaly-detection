@@ -44,7 +44,7 @@ public interface FraudDetectionFinServTranPipelineOptions extends DataflowPipeli
   void setTableSpec(String value);
 
   @Description("Aggregation Window Interval Default to 60 seconds")
-  @Default.Integer(1)
+  @Default.Integer(5)
   Integer getWindowInterval();
 
   void setWindowInterval(Integer value);
