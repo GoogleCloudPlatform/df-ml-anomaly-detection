@@ -51,7 +51,10 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -100,6 +103,12 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
   public PCollection<Row> expand(PCollection<Row> input) {
 
     return input
+        .apply(
+            "Fixed Window",
+            Window.<Row>into(FixedWindows.of(Duration.standardSeconds(5)))
+                .triggering(AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
+                .discardingFiredPanes()
+                .withAllowedLateness(Duration.ZERO))
         .apply(
             "ModifySchema", DropFields.fields("nameOrig", "nameDest", "isFlaggedFraud", "isFraud"))
         .setRowSchema(Util.prerdictonInputSchema)

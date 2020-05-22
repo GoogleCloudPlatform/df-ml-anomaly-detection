@@ -23,9 +23,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
@@ -50,19 +47,12 @@ public class FraudDetectionFinServTranPipeline {
     Pipeline p = Pipeline.create(options);
     PCollection<Row> transaction =
         p.apply(
-                "ReadTransactionTransform",
-                ReadTransactionTransform.newBuilder()
-                    .setFilePattern(options.getInputFilePattern())
-                    .setPollInterval(DEFAULT_POLL_INTERVAL)
-                    .setSubscriber(options.getSubscriberId())
-                    .build())
-            .apply(
-                "Fixed Window",
-                Window.<Row>into(
-                        FixedWindows.of(Duration.standardSeconds(options.getWindowInterval())))
-                    .triggering(AfterWatermark.pastEndOfWindow())
-                    .discardingFiredPanes()
-                    .withAllowedLateness(Duration.ZERO));
+            "ReadTransactionTransform",
+            ReadTransactionTransform.newBuilder()
+                .setFilePattern(options.getInputFilePattern())
+                .setPollInterval(DEFAULT_POLL_INTERVAL)
+                .setSubscriber(options.getSubscriberId())
+                .build());
 
     PCollection<Row> predictionData =
         transaction.apply(
@@ -87,7 +77,6 @@ public class FraudDetectionFinServTranPipeline {
             .setTableSpec(options.getOutlierTableSpec())
             .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
             .build());
-
     return p.run();
   }
 }
