@@ -46,15 +46,15 @@ import org.apache.beam.sdk.schemas.transforms.DropFields;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
+import org.apache.beam.sdk.state.TimeDomain;
+import org.apache.beam.sdk.state.Timer;
+import org.apache.beam.sdk.state.TimerSpec;
+import org.apache.beam.sdk.state.TimerSpecs;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.transforms.WithKeys;
-import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
-import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -104,12 +104,6 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
 
     return input
         .apply(
-            "Fixed Window",
-            Window.<Row>into(FixedWindows.of(Duration.standardSeconds(5)))
-                .triggering(AfterProcessingTime.pastFirstElementInPane().plusDelayOf(Duration.ZERO))
-                .discardingFiredPanes()
-                .withAllowedLateness(Duration.ZERO))
-        .apply(
             "ModifySchema", DropFields.fields("nameOrig", "nameDest", "isFlaggedFraud", "isFraud"))
         .setRowSchema(Util.prerdictonInputSchema)
         .apply("RowToJson", ToJson.of())
@@ -129,22 +123,20 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     @StateId("elementsBag")
     private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
 
-    //    @TimerId("eventTimer")
-    //    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
+    @TimerId("eventTimer")
+    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
 
     @ProcessElement
     public void process(
         @Element KV<Integer, String> element,
         @StateId("elementsBag") BagState<String> elementsBag,
-        // @TimerId("eventTimer") Timer eventTimer,
-        BoundedWindow w) {
+        @TimerId("eventTimer") Timer eventTimer) {
       elementsBag.add(element.getValue());
-      // eventTimer.set(w.maxTimestamp());
-      // eventTimer.offset(Duration.standardSeconds(5)).setRelative();
+      eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
 
-    @OnWindowExpiration
-    public void onWindowExpiration(
+    @OnTimer("eventTimer")
+    public void onTimer(
         @StateId("elementsBag") BagState<String> elementsBag, OutputReceiver<String> output) {
       AtomicInteger bufferSize = new AtomicInteger();
       List<String> rows = new ArrayList<>();
@@ -237,15 +229,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
           .getAsJsonArray("predictions")
           .forEach(
               element -> {
+                JsonObject jo = element.getAsJsonObject();
                 String transactionId =
-                    element
-                        .getAsJsonObject()
-                        .get("transactionId")
-                        .getAsJsonArray()
-                        .get(0)
-                        .getAsString();
-                Double logistic =
-                    element.getAsJsonObject().get("logistic").getAsJsonArray().get(0).getAsDouble();
+                    jo.get("transactionId").getAsJsonArray().get(0).getAsString();
+                Double logistic = jo.get("logistic").getAsJsonArray().get(0).getAsDouble();
 
                 Row row =
                     Row.withSchema(Util.prerdictonOutputSchema)
