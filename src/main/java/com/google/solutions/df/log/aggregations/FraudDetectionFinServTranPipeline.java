@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class FraudDetectionFinServTranPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(FraudDetectionFinServTranPipeline.class);
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(30);
+  private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(10);
 
   public static void main(String args[]) {
 
@@ -71,12 +71,12 @@ public class FraudDetectionFinServTranPipeline {
             .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
             .build());
 
-    predictionData.apply(
-        "StreamFraudData",
-        BQWriteTransform.newBuilder()
-            .setTableSpec(options.getOutlierTableSpec())
-            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-            .build());
+//    predictionData.apply(
+//        "StreamFraudData",
+//        BQWriteTransform.newBuilder()
+//            .setTableSpec(options.getOutlierTableSpec())
+//            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+//            .build());
 
     return p.run();
   }

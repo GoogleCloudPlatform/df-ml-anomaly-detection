@@ -68,6 +68,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
   public static final Logger LOG = LoggerFactory.getLogger(PredictTransform.class);
   public static final List<String> scope =
       Arrays.asList("https://www.googleapis.com/auth/cloud-platform");
+  public static Duration WINDOW_INTERVAL = Duration.standardSeconds(5);
 
   public abstract Integer batchSize();
 
@@ -133,7 +134,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         @TimerId("eventTimer") Timer eventTimer,
         BoundedWindow w) {
       elementsBag.add(element.getValue());
-      eventTimer.offset(Duration.standardSeconds(2)).setRelative();
+      //eventTimer.set(w.maxTimestamp());
+      eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
 
     @OnTimer("eventTimer")
@@ -173,8 +175,9 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     builder.append("{\"signature_name\":\"predict\",\"instances\": [");
     builder.append("\n");
     builder.append(
-        StreamSupport.stream(records.spliterator(), false).collect(Collectors.joining(", ")));
+        StreamSupport.stream(records.spliterator(), false).collect(Collectors.joining(",")));
     builder.append("\n]}");
+    LOG.debug("Builder Size {}",builder.toString().getBytes().length);
     return builder.toString();
   }
 
@@ -197,8 +200,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       this.contentType = "application/json";
     }
 
-    @Setup
-    public void setup() throws GeneralSecurityException, IOException {
+
+    @StartBundle
+    public void startBundle() throws GeneralSecurityException, IOException {
+      json = new Gson();
       httpTransport = GoogleNetHttpTransport.newTrustedTransport();
       JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
       Discovery discovery = new Discovery.Builder(httpTransport, jsonFactory, null).build();
@@ -212,12 +217,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       credential = GoogleCredential.getApplicationDefault().createScoped(scope);
       LOG.info("Url {}", url.toString());
     }
-
-    @StartBundle
-    public void startBundle() {
-      json = new Gson();
-    }
-
+   @FinishBundle
+   public void finishBundle() {
+	  
+   }
     @ProcessElement
     public void processElement(ProcessContext c) throws IOException {
 
@@ -239,10 +242,13 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                         .getAsString();
                 Double logistic =
                     element.getAsJsonObject().get("logistic").getAsJsonArray().get(0).getAsDouble();
-                c.output(
-                    Row.withSchema(Util.prerdictonOutputSchema)
-                        .addValues(transactionId, logistic, convertedObject.toString())
-                        .build());
+             
+                Row row = Row.withSchema(Util.prerdictonOutputSchema)
+                        .addValues(transactionId, logistic, element.toString())
+                        .build();
+                LOG.debug("Predict Output {}", row.toString());
+                c.output(row);
+                
               });
     }
   }

@@ -94,7 +94,7 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
       String input = c.element();
       JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
       c.output(convertedObject.toString());
-      LOG.info("log: {}", convertedObject.toString());
+      LOG.debug("log: {}", convertedObject.toString());
     }
   }
 }
