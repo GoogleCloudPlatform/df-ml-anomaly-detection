@@ -506,6 +506,7 @@ If you click on DLP Tranformation from the DAG, you will see following sub trans
 
 ![ref_arch](diagram/new_dlp_dag.png)
 
-
+### Realtime Fraud Detection on Financial Transactions 
+![ref_arch](diagram/df-cloud-ai-prediction.png)
 
 

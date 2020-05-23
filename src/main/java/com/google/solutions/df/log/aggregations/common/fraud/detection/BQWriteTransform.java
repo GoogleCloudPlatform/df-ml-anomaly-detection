@@ -15,10 +15,7 @@
  */
 package com.google.solutions.df.log.aggregations.common.fraud.detection;
 
-import com.google.api.services.bigquery.model.Clustering;
-import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.auto.value.AutoValue;
-import java.util.Arrays;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;

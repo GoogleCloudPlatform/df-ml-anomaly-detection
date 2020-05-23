@@ -1,0 +1,13 @@
+{"step": {{integer(111,555)}},
+"type":"{{random("CASH_IN","CASH_OUT","TRANSFER","PAYMENT")}}",
+"amount":{{double(1.0,999999.0,"%.2f")}},
+"nameOrig":"C994950684",
+"oldbalanceOrg":{{double(1.0,999999.0,"%.2f")}},
+"newbalanceOrig":{{double(1.0,999999.0,"%.2f")}},
+"nameDest":"C1662241365",
+"oldbalanceDest":{{double(1.0,999999.0,"%.2f")}},
+"newbalanceDest":{{double(1.0,999999.0,"%.2f")}},
+"isFraud":{{integer(0,1)}},
+"isFlaggedFraud":{{integer(0,1)}},
+"transactionId":"{{uuid()}}"
+}

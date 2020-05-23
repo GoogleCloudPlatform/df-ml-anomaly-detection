@@ -16,6 +16,8 @@ public class Util {
 
   public static TupleTag<Row> featureDataTag = new TupleTag<Row>() {};
   public static TupleTag<String> predictDataTag = new TupleTag<String>() {};
+  public static TupleTag<String> failedJsonTag = new TupleTag<String>() {};
+  public static TupleTag<String> successJsonTag = new TupleTag<String>() {};
   public static final Integer keyRange = 100;
   public static final Schema prerdictonOutputSchema =
       Stream.of(

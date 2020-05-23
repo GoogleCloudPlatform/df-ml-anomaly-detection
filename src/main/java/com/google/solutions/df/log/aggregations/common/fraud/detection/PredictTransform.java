@@ -32,6 +32,7 @@ import com.google.api.services.discovery.model.RestDescription;
 import com.google.api.services.discovery.model.RestMethod;
 import com.google.auto.value.AutoValue;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -111,13 +112,15 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
         .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())))
         .setRowSchema(Util.prerdictonOutputSchema)
-        .apply("Print", ParDo.of(new DoFn <Row, Row>(){
-        	@ProcessElement
-        	public void processContext(ProcessContext c) {
-        		//LOG.info(c.element().toString());
-        		c.output(c.element());
-        	}
-        }));
+        .apply(
+            "Print",
+            ParDo.of(
+                new DoFn<Row, Row>() {
+                  @ProcessElement
+                  public void processContext(ProcessContext c) {
+                    c.output(c.element());
+                  }
+                }));
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
@@ -138,6 +141,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         @Element KV<Integer, String> element,
         @StateId("elementsBag") BagState<String> elementsBag,
         @TimerId("eventTimer") Timer eventTimer) {
+      LOG.debug("Key {}",element.getKey());
       elementsBag.add(element.getValue());
       eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
@@ -155,7 +159,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                 boolean clearBuffer = (bufferSize.intValue() + elementSize.intValue() > batchSize);
                 if (clearBuffer) {
                   LOG.debug("Clearing Rows {}", rows.size());
-                  output.output(emitResult(rows));
+                  if (rows.size()>0)
+                	  output.output(emitResult(rows,rows.size()));
                   rows.clear();
                   bufferSize.set(0);
                   rows.add(element);
@@ -166,14 +171,14 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                   bufferSize.getAndAdd(Integer.valueOf(element.getBytes().length));
                 }
               });
-      if (!rows.isEmpty()) {
+      if (!rows.isEmpty() && rows.size()>0) {
         LOG.debug("Remaning Rows {}", rows.size());
-        output.output(emitResult(rows));
+        output.output(emitResult(rows,rows.size()));
       }
     }
   }
 
-  public static String emitResult(Iterable<String> records) {
+  public static String emitResult(Iterable<String> records, Integer totalRows) {
 
     StringBuilder builder = new StringBuilder();
     builder.append("{\"signature_name\":\"predict\",\"instances\": [");
@@ -181,7 +186,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     builder.append(
         StreamSupport.stream(records.spliterator(), false).collect(Collectors.joining(",")));
     builder.append("\n]}");
-    LOG.debug("Builder Size {}", builder.toString().getBytes().length);
+    LOG.info("Builder Size {}, Rows {}", builder.toString().getBytes().length, totalRows);
     return builder.toString();
   }
 
@@ -231,9 +236,9 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
       HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
       String response = request.execute().parseAsString();
-      JsonObject convertedObject = json.fromJson(response, JsonObject.class);
+      JsonArray convertedObject = json.fromJson(response, JsonObject.class).getAsJsonArray("predictions");
+      LOG.info("Response Size {}",convertedObject.size());
       convertedObject
-          .getAsJsonArray("predictions")
           .forEach(
               element -> {
                 JsonObject jo = element.getAsJsonObject();

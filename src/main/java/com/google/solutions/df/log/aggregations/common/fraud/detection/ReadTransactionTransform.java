@@ -18,6 +18,7 @@ package com.google.solutions.df.log.aggregations.common.fraud.detection;
 import com.google.auto.value.AutoValue;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -30,6 +31,7 @@ import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.Row;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +68,6 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
         input.apply(
             "ReadFromGCS",
             TextIO.read().from(filePattern()).watchForNewFiles(pollInterval(), Growth.never()));
-    // .apply("AssignEventTimestamp", WithTimestamps.of((String rec) -> Instant.now()));
 
     PCollection<String> pubsubMessage =
         input.apply("ReadFromPubSub", PubsubIO.readStrings().fromSubscription(subscriber()));
@@ -74,7 +75,11 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
     return PCollectionList.of(fileRow)
         .and(pubsubMessage)
         .apply(Flatten.<String>pCollections())
-        .apply("ValidateJson", ParDo.of(new JsonValidatorFn()))
+        .apply(
+            "ValidateJson",
+            ParDo.of(new JsonValidatorFn())
+                .withOutputTags(Util.successJsonTag, TupleTagList.of(Util.failedJsonTag)))
+        .get(Util.successJsonTag)
         .apply("JsonToRow", JsonToRow.withSchema(Util.transactionSchema));
   }
 
@@ -89,9 +94,14 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
     @ProcessElement
     public void processElement(ProcessContext c) {
       String input = c.element();
-      JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
-      c.output(convertedObject.toString());
-      LOG.debug("log: {}", convertedObject.toString());
+      try {
+        JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
+        c.output(Util.successJsonTag, convertedObject.toString());
+        LOG.debug("log: {}", convertedObject.toString());
+      } catch (JsonSyntaxException ex) {
+        c.output(Util.failedJsonTag, input);
+        LOG.error("Error Parsing Json {}", ex.getMessage());
+      }
     }
   }
 }
