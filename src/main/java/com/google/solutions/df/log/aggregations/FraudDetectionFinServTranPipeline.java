@@ -15,11 +15,13 @@
  */
 package com.google.solutions.df.log.aggregations;
 
+import com.google.solutions.df.log.aggregations.common.fraud.detection.BQWriteTransform;
 import com.google.solutions.df.log.aggregations.common.fraud.detection.FraudDetectionFinServTranPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.fraud.detection.PredictTransform;
 import com.google.solutions.df.log.aggregations.common.fraud.detection.ReadTransactionTransform;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -61,20 +63,21 @@ public class FraudDetectionFinServTranPipeline {
                 .setVersionId(options.getVersionId())
                 .setProjectId(options.getProject())
                 .setRandomKey(options.getKeyRange())
+                .setProbability(options.getProbability())
                 .build());
-    //    transaction.apply(
-    //        "StreamTransactionData",
-    //        BQWriteTransform.newBuilder()
-    //            .setTableSpec(options.getTableSpec())
-    //            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-    //            .build());
-    //
-    //    predictionData.apply(
-    //        "StreamFraudData",
-    //        BQWriteTransform.newBuilder()
-    //            .setTableSpec(options.getOutlierTableSpec())
-    //            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
-    //            .build());
+    transaction.apply(
+        "InsertTransactionData",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getTableSpec())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+            .build());
+
+    predictionData.apply(
+        "StreamFraudData",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getOutlierTableSpec())
+            .setMethod(BigQueryIO.Write.Method.STREAMING_INSERTS)
+            .build());
     return p.run();
   }
 }

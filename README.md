@@ -1,21 +1,29 @@
-#  ML based Network Anomaly Detection solution to identify Cyber Security Threat
-This repo contains a reference implementation of an ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML & Cloud DLP.  It uses an easy to use built in K-Means clustering model as part of BQML to train and normalize netflow log data.   Key part of the  implementation  uses  Dataflow for  feature extraction & real time outlier detection which  has been tested to process over 20TB of data. (250k msg/sec). Finally, it also uses Cloud DLP to tokenize IMSI  (international mobile subscriber identity) number as the streaming Dataflow pipeline  ingests millions of netflow log form Pub/Sub.
+# Realtime AI Using Dataflow
+This repo provides sample Dataflow pipelines  integrating with BQ ML, Cloud AI and AutoML (coming soon!) to perform anomaly detection use case as part of real time AI pattern. It contains reference implementation for  following real time anomaly detection use cases:  
+
+1.  Finding anomalous behaviour in netflow log to identify cyber security threat for a Telco use case.
+2. Finding anomalous transaction to identify fraudulent activities for a Financial Service use case.     
 
 ## Table of Contents  
-* [Summary](#summary)  
-* [Reference Architecture](#reference-architecture).      
-* [Quick Start](#quick-start).  
-* [Learn More](#learn-more-about-this-solution)
-	* [Mock Data Generator to Pub/Sub Using Dataflow](#test)
-	* [Train & Normalize Data Using BQ ML](#create-a-k-means-model-using-bq-ml )  
-	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation)
-	* [Realtime outlier detection using Dataflow](#find-the-outliers) 
-	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-integration)
+* [Anomaly detection in Netflow log](#anomaly-detection-in-netflow-log).  
+	* [Reference Architecture](#anomaly-detection-reference-architecture-using-bqml).      
+	* [Quick Start](#quick-start).  
+	* [Learn More](#learn-more-about-this-solution). 
+	* [Mock Data Generator to Pub/Sub Using Dataflow](#test). 
+	* [Train & Normalize Data Using BQ ML](#create-a-k-means-model-using-bq-ml )
+	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation). 
+	* [Realtime outlier detection using Dataflow](#find-the-outliers). 
+	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-integration). 
 	
-	 
+* [Anomaly detection in Financial Transactions](#anomaly-detection-in-financial-transactions). 
+	* [Reference Architecture](#anomaly-detection-reference-architecture-using-cloud-ai). 
+	* [Build & Run](#build--run-1)
+	* [Test](#test-1)
+	
+	  		 
+## Anomaly Detection in Netflow log
+This section of the repo contains a reference implementation of an ML based Network Anomaly Detection solution by using Pub/Sub, Dataflow, BQML & Cloud DLP.  It uses an easy to use built in K-Means clustering model as part of BQML to train and normalize netflow log data.   Key part of the  implementation  uses  Dataflow for  feature extraction & real time outlier detection which  has been tested to process over 20TB of data. (250k msg/sec). Finally, it also uses Cloud DLP to tokenize IMSI  (international mobile subscriber identity) number as the streaming Dataflow pipeline  ingests millions of netflow log form Pub/Sub.   
 
-
-## Summary
 Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights an ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
 This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in netflow logs  in real time.  This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
@@ -26,7 +34,7 @@ In summary, you can use this solution to demo following 3 use cases :
 2. Making Machine Learning easy to do by creating a model by using BQ ML K-Means Clustering.  
 3. Protecting sensitive information e.g:"IMSI (international mobile subscriber identity)" by using Cloud DLP crypto based tokenization.  
 
-## Reference Architecture
+## Anomaly Detection Reference Architecture Using BQML
 
 
 ![ref_arch](diagram/ref_arch.png)
@@ -506,7 +514,84 @@ If you click on DLP Tranformation from the DAG, you will see following sub trans
 
 ![ref_arch](diagram/new_dlp_dag.png)
 
-### Realtime Fraud Detection on Financial Transactions 
+## Anomaly Detection in Financial Transactions
+This section of this repo contains a reference implementation of finding fraudulent transactions using Dataflow and Cloud AI. First step is to create a TensorFlow  boosted tree model  by using a [Kaggle dataset](https://www.kaggle.com/ntnu-testimon/paysim1) and deploy the model in Cloud AI for online prediction. Then uses a Dataflow pipeline highlighted in the reference architecture below to micro batch the request for online prediction.  Finally, the transaction data is stored in a BigQuery table called transactions and outlier data is stored in a table called fraud_prediction. Data can be joined between two tables  by transactionId column.  By default, probability is set to 0.99 (99%) to identify the fraudulent transactions. 
+
+## Anomaly Detection Reference Architecture Using Cloud AI
 ![ref_arch](diagram/df-cloud-ai-prediction.png)
+
+## Build & Run
+
+1. Please follow this [code lab](https://codelabs.developers.google.com/codelabs/fraud-detection-ai-explanations/#7) to build and deploy the [TensorFlow model](https://www.tensorflow.org/api_docs/python/tf/estimator/BoostedTreesClassifier) in Cloud AI.  Also, notice the change in the notebook to add a transactionId as part of serving function. Updated notebook can be found [here](https://github.com/GoogleCloudPlatform/df-ml-anomaly-detection/blob/finserv-fraud-detection-tf-cloud-ai/fraud-detection-notebook/credit-card-fraud-detection-v1.ipynb).  
+
+2. Use the command below to create a Dataset and two tables in BigQuery.  
+
+```
+bq --location=US mk -d \ 
+--description "FinServ Transaction Dataset \ 
+<dataset_name>
+``` 
+
+```
+bq mk -t --schema src/main/resources/transactions.json \
+--label myorg:prod \
+<project>:<dataset_name>.transactions 
+```
+
+```
+bq mk -t --schema src/main/resources/fraud_prediction.json \
+--label myorg:prod \
+<project>:<dataset_name>.fraud_prediction
+```
+
+3. Trigger the Dataflow pipeline by passing all required parameters.  Pipeline uses state and timer api to micro batch the call to prediction API.
+
+```
+gradle run -DmainClass=com.google.solutions.df.log.aggregations.FraudDetectionFinServTranPipeline -Pargs="--runner=DataflowRunner --project=<prroject-id>> \
+--inputFilePattern=gs://df-ml-anomaly-detection-mock-data/finserv_fraud_detection/fraud_data_kaggle.json \
+--subscriberId=projects/<project-id>/subscriptions/<subs_id> \
+--modelId=<model_id> \
+--versionId=<version_id> \
+--outlierTableSpec=<project_id>:<dataset>.fraud_prediction \
+--tableSpec=<project_id>:<dataset>.transactions \
+--keyRange=1024 \
+--autoscalingAlgorithm=NONE \
+--numWorkers=30 \
+--maxNumWorkers=30 \
+--workerMachineType=n1-highmem-8 \
+--batchSize=500000 \
+--region=us-central1 \
+--gcpTempLocation=gs://df-temp-data/temp"
+
+```
+## Test
+1. Reading the full kaggle dataset (6M+) form GCS bucket and publish  some random mock data in PubSub topic
+![ingest_data](diagram/ingest-data-ft.png). 
+
+Full DAG
+![ingest_data](diagram/full-dag-ft.png). 
+
+2. Predict Transform with 500KB payload / request
+
+![predict_data](diagram/predict-transform-ft.png). 
+
+![batch_data](diagram/batch-ft.png). 
+
+3. BigQuery validation
+![predict_data](diagram/bq-validation-ft.png). 
+
+![trans_schema](diagram/transactions-schema-ft.png). 
+
+![predict_schema](diagram/predict-schema-ft.png). 
+
+4. Prediction API in Cloud AI
+![predict_data](diagram/predict_1.png). 
+
+![trans_schema](diagram/predict_2.png). 
+
+![predict_schema](diagram/predict_3.png). 
+
+
+ 
 
 

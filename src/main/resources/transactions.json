@@ -1,0 +1,62 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "step",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "nameOrig",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "nameDest",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "isFlaggedFraud",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "isFraud",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "type",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "amount",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "oldbalanceOrg",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "newbalanceOrig",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "oldbalanceDest",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "newbalanceDest",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "transactionId",
+    "type": "STRING"
+  }
+]

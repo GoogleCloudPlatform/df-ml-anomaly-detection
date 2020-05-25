@@ -84,6 +84,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
 
   public abstract String versionId();
 
+  public abstract Double probability();
+
   @AutoValue.Builder
   public abstract static class Builder {
 
@@ -96,6 +98,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     public abstract Builder setModelId(String modelId);
 
     public abstract Builder setVersionId(String versionId);
+
+    public abstract Builder setProbability(Double probability);
 
     public abstract PredictTransform build();
   }
@@ -120,17 +124,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
         .apply("RowToJson", ToJson.of())
         .apply("AddKey", WithKeys.of(new Random().nextInt(randomKey())))
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
-        .apply("Predict", ParDo.of(new PredictRemote(projectId(), modelId(), versionId())))
-        .setRowSchema(Util.prerdictonOutputSchema)
         .apply(
-            "Print",
-            ParDo.of(
-                new DoFn<Row, Row>() {
-                  @ProcessElement
-                  public void processContext(ProcessContext c) {
-                    c.output(c.element());
-                  }
-                }));
+            "Predict",
+            ParDo.of(new PredictRemote(projectId(), modelId(), versionId(), probability())))
+        .setRowSchema(Util.prerdictonOutputSchema);
   }
 
   public static class BatchRequest extends DoFn<KV<Integer, String>, String> {
@@ -155,8 +152,6 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       LOG.debug("Key {}", element.getKey());
       elementsBag.add(element.getValue());
       eventTimer.set(w.maxTimestamp());
-
-      // eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
 
     @OnTimer("eventTimer")
@@ -207,6 +202,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private String projectId;
     private String modelId;
     private String versionId;
+    private Double probability;
     private GenericUrl url;
     private String contentType;
     private RestMethod method;
@@ -214,10 +210,11 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private GoogleCredential credential;
     private Gson json;
 
-    public PredictRemote(String projectId, String modelId, String versionId) {
+    public PredictRemote(String projectId, String modelId, String versionId, Double probability) {
       this.projectId = projectId;
       this.modelId = modelId;
       this.versionId = versionId;
+      this.probability = probability;
       this.contentType = "application/json";
     }
 
@@ -260,13 +257,14 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
             JsonObject jo = element.getAsJsonObject();
             String transactionId = jo.get("transactionId").getAsJsonArray().get(0).getAsString();
             Double logistic = jo.get("logistic").getAsJsonArray().get(0).getAsDouble();
-
-            Row row =
-                Row.withSchema(Util.prerdictonOutputSchema)
-                    .addValues(transactionId, logistic, element.toString())
-                    .build();
-            LOG.debug("Predict Output {}", row.toString());
-            c.output(row);
+            if (logistic >= probability) {
+              Row row =
+                  Row.withSchema(Util.prerdictonOutputSchema)
+                      .addValues(transactionId, logistic, element.toString())
+                      .build();
+              LOG.info("Predict Output {}", row.toString());
+              c.output(row);
+            }
           });
     }
   }

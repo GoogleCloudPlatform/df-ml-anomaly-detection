@@ -1,0 +1,17 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "transactionId",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "logistic",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "json_response",
+    "type": "STRING"
+  }
+]

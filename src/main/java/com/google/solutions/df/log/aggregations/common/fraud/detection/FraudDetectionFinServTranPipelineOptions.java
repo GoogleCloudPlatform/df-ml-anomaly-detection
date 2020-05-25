@@ -32,8 +32,14 @@ public interface FraudDetectionFinServTranPipelineOptions extends DataflowPipeli
 
   void setWriteMethod(BigQueryIO.Write.Method value);
 
+  @Description("Probability For Prediction 0.99 means 99%")
+  @Default.Double(0.99)
+  Double getProbability();
+
+  void setProbability(Double value);
+
   @Description("Batch Insert Trigger Frequency defaulted to 1 min")
-  @Default.Integer(1)
+  @Default.Integer(2)
   Integer getBatchFrequency();
 
   void setBatchFrequency(Integer value);

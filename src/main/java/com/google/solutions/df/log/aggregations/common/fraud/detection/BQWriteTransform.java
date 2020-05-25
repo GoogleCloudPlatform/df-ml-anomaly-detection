@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);
-  private static final Integer NUM_OF_SHARDS = 100;
+  private static final Integer NUM_OF_SHARDS = 1000;
 
   @Nullable
   public abstract Integer batchFrequency();
