@@ -27,12 +27,14 @@ import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Watch.Growth;
+import org.apache.beam.sdk.transforms.WithTimestamps;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,9 +67,11 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
   public PCollection<Row> expand(PBegin input) {
 
     PCollection<String> fileRow =
-        input.apply(
-            "ReadFromGCS",
-            TextIO.read().from(filePattern()).watchForNewFiles(pollInterval(), Growth.never()));
+        input
+            .apply(
+                "ReadFromGCS",
+                TextIO.read().from(filePattern()).watchForNewFiles(pollInterval(), Growth.never()))
+            .apply("AssignEventTimestamp", WithTimestamps.of((String rec) -> Instant.now()));
 
     PCollection<String> pubsubMessage =
         input.apply("ReadFromPubSub", PubsubIO.readStrings().fromSubscription(subscriber()));

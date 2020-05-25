@@ -56,6 +56,10 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.ToJson;
 import org.apache.beam.sdk.transforms.WithKeys;
+import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
@@ -105,6 +109,12 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
 
     return input
         .apply(
+            "Fixed Window",
+            Window.<Row>into(FixedWindows.of(Duration.standardSeconds(5)))
+                .triggering(AfterWatermark.pastEndOfWindow())
+                .discardingFiredPanes()
+                .withAllowedLateness(Duration.ZERO))
+        .apply(
             "ModifySchema", DropFields.fields("nameOrig", "nameDest", "isFlaggedFraud", "isFraud"))
         .setRowSchema(Util.prerdictonInputSchema)
         .apply("RowToJson", ToJson.of())
@@ -134,16 +144,19 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private final StateSpec<BagState<String>> elementsBag = StateSpecs.bag();
 
     @TimerId("eventTimer")
-    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.PROCESSING_TIME);
+    private final TimerSpec eventTimer = TimerSpecs.timer(TimeDomain.EVENT_TIME);
 
     @ProcessElement
     public void process(
         @Element KV<Integer, String> element,
         @StateId("elementsBag") BagState<String> elementsBag,
-        @TimerId("eventTimer") Timer eventTimer) {
-      LOG.debug("Key {}",element.getKey());
+        @TimerId("eventTimer") Timer eventTimer,
+        BoundedWindow w) {
+      LOG.debug("Key {}", element.getKey());
       elementsBag.add(element.getValue());
-      eventTimer.offset(Duration.standardSeconds(5)).setRelative();
+      eventTimer.set(w.maxTimestamp());
+
+      // eventTimer.offset(Duration.standardSeconds(5)).setRelative();
     }
 
     @OnTimer("eventTimer")
@@ -159,8 +172,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                 boolean clearBuffer = (bufferSize.intValue() + elementSize.intValue() > batchSize);
                 if (clearBuffer) {
                   LOG.debug("Clearing Rows {}", rows.size());
-                  if (rows.size()>0)
-                	  output.output(emitResult(rows,rows.size()));
+                  if (rows.size() > 0) output.output(emitResult(rows, rows.size()));
                   rows.clear();
                   bufferSize.set(0);
                   rows.add(element);
@@ -171,9 +183,9 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                   bufferSize.getAndAdd(Integer.valueOf(element.getBytes().length));
                 }
               });
-      if (!rows.isEmpty() && rows.size()>0) {
+      if (!rows.isEmpty() && rows.size() > 0) {
         LOG.debug("Remaning Rows {}", rows.size());
-        output.output(emitResult(rows,rows.size()));
+        output.output(emitResult(rows, rows.size()));
       }
     }
   }
@@ -214,7 +226,10 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       json = new Gson();
       httpTransport = GoogleNetHttpTransport.newTrustedTransport();
       JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-      Discovery discovery = new Discovery.Builder(httpTransport, jsonFactory, null).build();
+      Discovery discovery =
+          new Discovery.Builder(httpTransport, jsonFactory, null)
+              .setApplicationName("fin_serv_fraud_detection")
+              .build();
       RestDescription api = discovery.apis().getRest("ml", "v1").execute();
       method = api.getResources().get("projects").getMethods().get("predict");
       JsonSchema param = new JsonSchema();
@@ -236,23 +251,23 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       HttpRequestFactory requestFactory = httpTransport.createRequestFactory(credential);
       HttpRequest request = requestFactory.buildRequest(method.getHttpMethod(), url, content);
       String response = request.execute().parseAsString();
-      JsonArray convertedObject = json.fromJson(response, JsonObject.class).getAsJsonArray("predictions");
-      LOG.info("Response Size {}",convertedObject.size());
-      convertedObject
-          .forEach(
-              element -> {
-                JsonObject jo = element.getAsJsonObject();
-                String transactionId =
-                    jo.get("transactionId").getAsJsonArray().get(0).getAsString();
-                Double logistic = jo.get("logistic").getAsJsonArray().get(0).getAsDouble();
+      JsonArray convertedObject =
+          json.fromJson(response, JsonObject.class).getAsJsonArray("predictions");
+      LOG.info("Response Size {} rows", convertedObject.size());
 
-                Row row =
-                    Row.withSchema(Util.prerdictonOutputSchema)
-                        .addValues(transactionId, logistic, element.toString())
-                        .build();
-                LOG.debug("Predict Output {}", row.toString());
-                c.output(row);
-              });
+      convertedObject.forEach(
+          element -> {
+            JsonObject jo = element.getAsJsonObject();
+            String transactionId = jo.get("transactionId").getAsJsonArray().get(0).getAsString();
+            Double logistic = jo.get("logistic").getAsJsonArray().get(0).getAsDouble();
+
+            Row row =
+                Row.withSchema(Util.prerdictonOutputSchema)
+                    .addValues(transactionId, logistic, element.toString())
+                    .build();
+            LOG.debug("Predict Output {}", row.toString());
+            c.output(row);
+          });
     }
   }
 }
