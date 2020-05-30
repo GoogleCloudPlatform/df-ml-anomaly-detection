@@ -47,7 +47,7 @@ apply plugin: "com.diffplug.gradle.spotless"
 
 
 mainClassName = System.getProperty("mainClass")
-//mainClassName = 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline' 
+//mainClassName = 'com.google.solutions.df.log.aggregations.FraudDetectionFinServTranPipeline' 
 jib {
   from {
     image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
@@ -93,7 +93,9 @@ dependencies {
 	compile group: 'commons-validator', name: 'commons-validator', version: '1.4.0'
 	compile 'commons-net:commons-net:3.6'
     compile group: 'com.google.cloud', name: 'google-cloud-dlp', version: '1.1.4'
-    compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'	
+    compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'
+    compile group: 'com.google.api-client', name: 'google-api-client', version: '1.30.9'
+    compile group: 'com.google.apis', name: 'google-api-services-discovery', version: 'v1-rev134-1.25.0'
 	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
 	testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
     testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
