@@ -1,7 +1,7 @@
-# Realtime AI Using Dataflow
-This repo provides sample Dataflow pipelines  integrating with BQ ML, Cloud AI and AutoML (coming soon!) to perform anomaly detection use case as part of real time AI pattern. It contains reference implementation for  following real time anomaly detection use cases:  
+# Realtime Anomaly Detection Using Google Cloud Stream Analytics and AI Services
+This repo provides a reference implementation of a Cloud Dataflow streaming pipelines that integrates with BigQuery ML, Cloud AI Platform, and AutoML (coming soon!) to perform anomaly detection use case as part of real time AI pattern. It contains reference implementations for the following real time anomaly detection use cases:  
 
-1.  Finding anomalous behaviour in netflow log to identify cyber security threat for a Telco use case.
+1. Finding anomalous behaviour in netflow log to identify cyber security threat for a Telco use case.
 2. Finding anomalous transaction to identify fraudulent activities for a Financial Service use case.     
 
 ## Table of Contents  
