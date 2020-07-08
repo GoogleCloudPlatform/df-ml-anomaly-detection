@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google LLC
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.google.solutions.df.log.aggregations;
 
 import com.google.solutions.df.log.aggregations.common.BQWriteTransform;
@@ -43,6 +42,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("serial")
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
   /** Default interval for polling files in GCS. */

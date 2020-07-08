@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google LLC
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 
+@SuppressWarnings("serial")
 public class MergeOutlierMap extends SimpleFunction<KV<Row, Row>, Row> {
   @Override
   public Row apply(KV<Row, Row> input) {
