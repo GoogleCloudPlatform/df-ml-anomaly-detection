@@ -42,7 +42,6 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("serial")
 public class SecureLogAggregationPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(SecureLogAggregationPipeline.class);
   /** Default interval for polling files in GCS. */

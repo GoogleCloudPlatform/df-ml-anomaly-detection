@@ -150,15 +150,13 @@ spotless {
 
 
 jib {
-    from {
-        image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
-    }
-    to {
-        credHelper = 'gcloud'
-    }
-    container {
-        appRoot = '/template/df-video-analytics-template'
-        entrypoint = 'INHERIT'
-        environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-video-analytics-template/resources/java_command_spec.json']
-    }
+  from {
+    image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
+  }
+  container {
+    appRoot = '/template/df-log-streaming-template'
+    entrypoint = 'INHERIT'
+	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-streaming-template/resources/java_command_spec.json']
+	
+  }
 }
