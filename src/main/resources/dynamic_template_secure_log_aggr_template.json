@@ -1,5 +1,5 @@
 {
-	"image": "gcr.io/[project-id]/df-ml-anomaly-detection",
+	"image": "gcr.io/cloud-solutions-images/df-ml-anomaly-detection",
 	"sdk_info": {
 			"language": "JAVA"
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google LLC
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @AutoValue
+@SuppressWarnings("serial")
 public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);

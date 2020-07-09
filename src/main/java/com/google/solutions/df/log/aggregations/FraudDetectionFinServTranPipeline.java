@@ -29,6 +29,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("serial")
 public class FraudDetectionFinServTranPipeline {
   public static final Logger LOG = LoggerFactory.getLogger(FraudDetectionFinServTranPipeline.class);
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.standardSeconds(300);

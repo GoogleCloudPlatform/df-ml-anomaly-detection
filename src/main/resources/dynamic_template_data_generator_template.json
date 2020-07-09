@@ -1,0 +1,6 @@
+{
+	"image": "gcr.io/cloud-solutions-images/df-data-generator",
+	"sdk_info": {
+			"language": "JAVA"
+		}
+}
