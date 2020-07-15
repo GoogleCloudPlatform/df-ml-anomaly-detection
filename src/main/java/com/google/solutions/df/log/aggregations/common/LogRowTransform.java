@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google LLC
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.apache.beam.sdk.values.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("serial")
 public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
   private static final Logger LOG = LoggerFactory.getLogger(LogRowTransform.class);
   private static final Integer SAMPLE_SIZE = 1000000;
@@ -39,12 +40,14 @@ public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Ro
   public PCollection<Row> expand(PCollection<Row> row) {
 
     PCollection<Row> aggrRow =
-        row.apply(
+    		row.apply(
                 "Add Columns",
                 AddFields.<Row>create()
                     .field("dstSubnet", Schema.FieldType.STRING)
-                    .field("duration", Schema.FieldType.INT32))
-            .apply("Create Aggr Row", MapElements.via(new LogAggrMapElement()))
+                    .field("duration", Schema.FieldType.INT32));
+                    
+        return  aggrRow.apply("Create Aggr Row", MapElements.via(new LogAggrMapElement()))
+            .setRowSchema(aggrRow.getSchema())
             .apply(
                 "Group By SubId & DstSubNet",
                 Group.<Row>byFieldNames("subscriberId", "dstSubnet")
@@ -71,6 +74,5 @@ public class LogRowTransform extends PTransform<PCollection<Row>, PCollection<Ro
             .apply("Merge Aggr Row", MapElements.via(new MergeLogAggrMap()))
             .setRowSchema(Util.bqLogSchema);
 
-    return aggrRow;
   }
 }

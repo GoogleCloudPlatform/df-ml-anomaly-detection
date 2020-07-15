@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Google LLC
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 buildscript {
     ext {
-        dataflowBeamVersion = '2.20.0'
+        dataflowBeamVersion = '2.22.0'
        
         
     }
@@ -27,7 +27,7 @@ buildscript {
     	}
     	dependencies {
         	classpath "net.ltgt.gradle:gradle-apt-plugin:0.19"
-        	classpath "gradle.plugin.com.google.cloud.tools:jib-gradle-plugin:1.4.0"
+        	classpath "gradle.plugin.com.google.cloud.tools:jib-gradle-plugin:2.4.0"
          	classpath "com.diffplug.spotless:spotless-plugin-gradle:3.24.2"
         
         
@@ -45,27 +45,31 @@ apply plugin: "net.ltgt.apt"
 apply plugin: 'com.google.cloud.tools.jib'
 apply plugin: "com.diffplug.gradle.spotless"
 
+// Licence header enforced by spotless
+def javaLicenseHeader = """/*
+ * Copyright 2020 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+"""
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+applicationDefaultJvmArgs = ['-Xms4g', '-Xmx16g']
+mainClassName = System.getProperty('mainClass', 'com.google.solutions.df.log.aggregations.SecureLogAggregationPipeline')
 
-mainClassName = System.getProperty("mainClass")
-//mainClassName = 'com.google.solutions.df.log.aggregations.FraudDetectionFinServTranPipeline' 
-jib {
-  from {
-    image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
-  }
-  container {
-    appRoot = '/template/df-log-streaming-template'
-    entrypoint = 'INHERIT'
-	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-streaming-template/resources/java_command_spec.json']
-	
-  }
-}
 group 'com.google.solutions'
 version '0.1.0'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
-applicationDefaultJvmArgs = ['-Xms4g', '-Xmx16g']
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -106,30 +110,21 @@ dependencies {
 
 
 }
-// Force the version of guava required by Beam
-configurations.all {
-  resolutionStrategy {
-    force 'com.google.guava:guava:25.1-jre'
-  }
-}
-
 jar {
     manifest {
         attributes ('Main-Class': mainClassName)
     }
-
-
-
 }
 
 compileJava {
-    // Add additional jvm argument
-    options.compilerArgs.addAll(['-Xlint:all'])
+    options.compilerArgs.addAll(['-Xlint:all', '-Xlint:-serial'])
+    options.encoding = 'UTF-8'
 }
 
 // default tasks when you run ./gradlew
 defaultTasks 'clean', 'assemble'
-// Google cloud dataflow requires the resource/main directory to exist
+
+// Google Cloud Dataflow requires the resource/main directory to exist
 task resources {
     def resourcesDir = new File('build/resources/main')
     resourcesDir.mkdirs()
@@ -139,12 +134,29 @@ run {
     if (project.hasProperty('args')) {
         args project.args.split('\\s')
     }
+    mustRunAfter 'resources'
 }
+
+// Spotless configuration
+
+def enableSpotlessCheck = project.hasProperty('enableSpotlessCheck') && project.enableSpotlessCheck == 'true'
 spotless {
+  enforceCheck enableSpotlessCheck
   java {
+    licenseHeader javaLicenseHeader
     googleJavaFormat()
   }
 }
 
-run.mustRunAfter 'resources'
 
+jib {
+  from {
+    image = 'gcr.io/dataflow-templates-base/java8-template-launcher-base:latest'
+  }
+  container {
+    appRoot = '/template/df-log-streaming-template'
+    entrypoint = 'INHERIT'
+	environment = [DATAFLOW_JAVA_COMMAND_SPEC:'/template/df-log-streaming-template/resources/java_command_spec.json']
+	
+  }
+}

@@ -82,7 +82,24 @@ _SUBSCRIPTION_ID=${SUBSCRIPTION_ID},\
 _TOPIC_ID=${TOPIC_ID},\
 _API_KEY=$(gcloud auth print-access-token)
 ```
+#### (Optional) Trigger the pipelines using flex template
+If you have all other resources like BigQuery tables, PubSub topic and subscriber, GCS bucket already exist or created before, you can use the command below to trigger the pipeline by using a public image. This may be helpful for run the pipeline for live demo. 
 
+Generate 10k msg/sec of random net flow log data:
+```
+gcloud beta dataflow flex-template run data-generator --project=<project_id> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_data_generator_template.json --parameters=autoscalingAlgorithm="NONE",numWorkers=5,maxNumWorkers=5,workerMachineType=n1-standard-4,qps=10000,schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/next-demo-schema.json,eventType=net-flow-log,topic=projects/next-demo-2020/topics/events
+```
+Generate 1k msg/sec of random outlier data:
+```
+gcloud beta dataflow flex-template run data-generator --project=<project_id> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_data_generator_template.json --parameters=autoscalingAlgorithm="NONE",numWorkers=5,maxNumWorkers=5,workerMachineType=n1-standard-4,qps=1000,schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/next-demo-schema-outlier.json,eventType=net-flow-log,topic=projects/<project_id>/topics/<topic_id>
+```
+
+Trigger Anomaly Detection Pipeline:
+
+```
+gcloud beta dataflow flex-template run "anomaly-detection" --project=<project_id>--region=us-central1 --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_secure_log_aggr_template.json --parameters=autoscalingAlgorithm="NONE",numWorkers=20,maxNumWorkers=20,workerMachineType=n1-highmem-4,subscriberId=projects/<project_id>/subscriptions/events-sub,tableSpec=<project_id>:<dataset_name>.cluster_model_data,batchFrequency=10,customGcsTempLocation=gs://df-tmp-data/temp,tempLocation=gs://df-temp-data/temp,clusterQuery=gs://<path>/normalized_cluster_data.sql,outlierTableSpec=<project_id>:<dataset_name>.outlier_data,inputFilePattern=gs://df-ml-anomaly-detection-mock-data/flow_log*.json,enbaleStreamingEngine=true,windowInterval=5,writeMethod=FILE_LOADS,streaming=true
+
+```
 ### Generate some mock data (1k events/sec) in PubSub topic
 ```
 gradle run -DmainClass=com.google.solutions.df.log.aggregations.StreamingBenchmark \
@@ -510,7 +527,7 @@ Note: Please checkout this [repo](https://github.com/GoogleCloudPlatform/dlp-dat
 
 ![ref_arch](diagram/dlp_imsi.png)
 
-If you click on DLP Tranformation from the DAG, you will see following sub transforms:
+If you click on DLP Transformation from the DAG, you will see following sub transforms:
 
 ![ref_arch](diagram/new_dlp_dag.png)
 
