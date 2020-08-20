@@ -15,25 +15,6 @@
  */
 package com.google.solutions.df.log.aggregations.common.fraud.detection;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.ByteArrayContent;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpContent;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.UriTemplate;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.discovery.Discovery;
-import com.google.api.services.discovery.model.JsonSchema;
-import com.google.api.services.discovery.model.RestDescription;
-import com.google.api.services.discovery.model.RestMethod;
-import com.google.auto.value.AutoValue;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -43,7 +24,9 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import org.apache.beam.sdk.schemas.transforms.DropFields;
+
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.state.BagState;
 import org.apache.beam.sdk.state.StateSpec;
 import org.apache.beam.sdk.state.StateSpecs;
@@ -66,6 +49,26 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpContent;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.UriTemplate;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.discovery.Discovery;
+import com.google.api.services.discovery.model.JsonSchema;
+import com.google.api.services.discovery.model.RestDescription;
+import com.google.api.services.discovery.model.RestMethod;
+import com.google.auto.value.AutoValue;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 @AutoValue
 public abstract class PredictTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
@@ -111,16 +114,41 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
   @Override
   public PCollection<Row> expand(PCollection<Row> input) {
 
-    return input
-        .apply(
-            "Fixed Window",
-            Window.<Row>into(FixedWindows.of(Duration.standardSeconds(5)))
-                .triggering(AfterWatermark.pastEndOfWindow())
-                .discardingFiredPanes()
-                .withAllowedLateness(Duration.ZERO))
-        .apply(
-            "ModifySchema", DropFields.fields("nameOrig", "nameDest", "isFlaggedFraud", "isFraud"))
-        .setRowSchema(Util.prerdictonInputSchema)
+    PCollection<Row> predictInput =
+        input
+            .apply(
+                "Fixed Window",
+                Window.<Row>into(FixedWindows.of(Duration.standardSeconds(5)))
+                    .triggering(AfterWatermark.pastEndOfWindow())
+                    .discardingFiredPanes()
+                    .withAllowedLateness(Duration.ZERO))
+            .apply(
+                "ModifiedRow",
+                ParDo.of(
+                    new DoFn<Row, Row>() {
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        Row currentRow = c.element();
+                        Row modifiedRow =
+                            Row.withSchema(Util.prerdictonInputSchema)
+                                .addValues(
+                                    currentRow.getValue("step"),
+                                    currentRow.getValue("type"),
+                                    currentRow.getValue("amount"),
+                                    currentRow.getValue("oldbalanceOrg"),
+                                    currentRow.getValue("newbalanceOrig"),
+                                    currentRow.getValue("oldbalanceDest"),
+                                    currentRow.getValue("newbalanceDest"),
+                                    currentRow.getValue("transactionId"))
+                                .build();
+
+                        LOG.debug("Modified Row {}", modifiedRow);
+                        c.output(modifiedRow);
+                      }
+                    }))
+            .setRowSchema(Util.prerdictonInputSchema);
+
+    return predictInput
         .apply("RowToJson", ToJson.of())
         .apply("AddKey", WithKeys.of(new Random().nextInt(randomKey())))
         .apply("Batch", ParDo.of(new BatchRequest(batchSize())))
@@ -209,6 +237,9 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private HttpTransport httpTransport;
     private GoogleCredential credential;
     private Gson json;
+    private final Counter numberOfOutliersFound =
+    	      Metrics.counter(ReadTransactionTransform.class, "numberOfOutliersFound");
+
 
     public PredictRemote(String projectId, String modelId, String versionId, Double probability) {
       this.projectId = projectId;
@@ -235,7 +266,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
           String.format("projects/%s/models/%s/versions/%s", projectId, modelId, versionId));
       url = new GenericUrl(UriTemplate.expand(api.getBaseUrl() + method.getPath(), param, true));
       credential = GoogleCredential.getApplicationDefault().createScoped(scope);
-      LOG.info("Url {}", url.toString());
+      LOG.debug("Url {}", url.toString());
     }
 
     @FinishBundle
@@ -250,7 +281,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
       String response = request.execute().parseAsString();
       JsonArray convertedObject =
           json.fromJson(response, JsonObject.class).getAsJsonArray("predictions");
-      LOG.info("Response Size {} rows", convertedObject.size());
+      LOG.debug("Response Size {} rows", convertedObject.size());
 
       convertedObject.forEach(
           element -> {
@@ -262,7 +293,8 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
                   Row.withSchema(Util.prerdictonOutputSchema)
                       .addValues(transactionId, logistic, element.toString())
                       .build();
-              LOG.info("Predict Output {}", row.toString());
+              LOG.debug("Predict Output {}", row.toString());
+              numberOfOutliersFound.inc();
               c.output(row);
             }
           });

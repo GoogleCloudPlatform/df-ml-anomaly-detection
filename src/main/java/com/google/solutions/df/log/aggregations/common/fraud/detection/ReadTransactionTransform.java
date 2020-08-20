@@ -21,6 +21,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.JsonToRow;
@@ -42,6 +44,7 @@ import org.slf4j.LoggerFactory;
 public abstract class ReadTransactionTransform extends PTransform<PBegin, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(ReadTransactionTransform.class);
 
+ 
   public abstract String subscriber();
 
   public abstract String filePattern();
@@ -89,6 +92,8 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
 
   public static class JsonValidatorFn extends DoFn<String, String> {
     public Gson gson;
+    private final Counter numberOfTransProcessed =
+  	      Metrics.counter(ReadTransactionTransform.class, "numberOfTransProcessed");
 
     @Setup
     public void setup() {
@@ -100,6 +105,7 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
       String input = c.element();
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
+        numberOfTransProcessed.inc();
         c.output(Util.successJsonTag, convertedObject.toString());
         LOG.debug("log: {}", convertedObject.toString());
       } catch (JsonSyntaxException ex) {

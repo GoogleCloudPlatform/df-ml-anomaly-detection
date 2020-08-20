@@ -1,0 +1,6 @@
+{
+	"image": "gcr.io/cloud-solutions-images/df-ml-finserv-anomaly-detection",
+	"sdk_info": {
+			"language": "JAVA"
+		}
+}
