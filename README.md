@@ -537,6 +537,13 @@ This section of this repo contains a reference implementation of finding fraudul
 ## Anomaly Detection Reference Architecture Using Cloud AI
 ![ref_arch](diagram/df-cloud-ai-prediction.png)
 
+
+## Trigger the pipeline using Flex Template
+You can use the command below to trigger the pipline using a public image as a Dataflow flex template
+
+```
+gcloud beta dataflow flex-template run "anomaly-detection-finserv" --project=<project> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_finserv_fraud_detection.json --parameters=autoscalingAlgorithm="NONE",numWorkers=30,maxNumWorkers=30,workerMachineType=n1-highmem-8,subscriberId=projects/<id>/subscriptions/<id>,tableSpec=project:dataset.transactions,outlierTableSpec=project:dataset.fraud_prediction,tempLocation=gs://<bucket>/temp,inputFilePattern=gs://df-ml-anomaly-detection-mock-data/finserv_fraud_detection/fraud_data_kaggle.json,modelId=<id>,versionId=<id>,keyRange=1024,batchSize=500000
+```
 ## Build & Run
 
 1. Please follow this [code lab](https://codelabs.developers.google.com/codelabs/fraud-detection-ai-explanations/#7) to build and deploy the [TensorFlow model](https://www.tensorflow.org/api_docs/python/tf/estimator/BoostedTreesClassifier) in Cloud AI.  Also, notice the change in the notebook to add a transactionId as part of serving function. Updated notebook can be found [here](https://github.com/GoogleCloudPlatform/df-ml-anomaly-detection/blob/finserv-fraud-detection-tf-cloud-ai/fraud-detection-notebook/credit-card-fraud-detection-v1.ipynb).  
@@ -607,6 +614,13 @@ Full DAG
 ![trans_schema](diagram/predict_2.png). 
 
 ![predict_schema](diagram/predict_3.png). 
+
+4. Custom Counter in Dataflow UI
+![custom_counter](diagram/custom_counter.png). 
+
+
+
+
 
 
  
