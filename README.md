@@ -616,6 +616,7 @@ Full DAG
 ![predict_schema](diagram/predict_3.png). 
 
 4. Custom Counter in Dataflow UI
+
 ![custom_counter](diagram/custom_counter.png). 
 
 
