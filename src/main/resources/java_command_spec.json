@@ -1,5 +1,5 @@
 {
-  "mainClass": "com.google.solutions.df.log.aggregations.StreamingBenchmark",
+  "mainClass": "com.google.solutions.df.log.aggregations.FraudDetectionFinServTranPipeline",
   "classPath": "/template/df-log-streaming-template/libs/*:/template/df-log-streaming-template/classes"
 }
 
