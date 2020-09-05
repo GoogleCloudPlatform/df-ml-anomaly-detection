@@ -22,8 +22,12 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableList;
+import com.google.gson.JsonObject;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
@@ -33,7 +37,6 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.net.util.SubnetUtils;
-import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 import org.joda.time.Period;
@@ -48,6 +51,8 @@ public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
   public static TupleTag<String> failureTag = new TupleTag<String>() {};
   public static TupleTag<String> successTag = new TupleTag<String>() {};
+  public static final String DAY_PARTITION = "DAY";
+  public static final Integer NUM_OF_SHARDS = 100;
 
   private static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
@@ -111,12 +116,10 @@ public class Util {
     return new SubnetUtils(dstIP, maskString).getInfo().getCidrSignature();
   }
 
-  public static Integer findDuration(long startTime, long endTime) {
+  public static Long findDuration(long startTime, long endTime) {
 
-    DateTime start = new DateTime(startTime);
-    DateTime end = new DateTime(endTime);
-    Period period = new Period(start, end, PeriodType.millis());
-    return Math.abs(period.getMillis());
+    Period period = new Period(startTime, endTime, PeriodType.millis());
+    return Long.valueOf(Math.abs(period.getMillis()));
   }
 
   public static String getTimeStamp() {
@@ -162,5 +165,26 @@ public class Util {
 
   public static String randomKeyGenerator(Integer range) {
     return String.valueOf(new Random().nextInt(range * 100));
+  }
+
+  public static List<String> getRawTableClusterFields() {
+    return Arrays.asList("srcIP");
+  }
+
+  public static List<String> getFeatureTableClusterFields() {
+    return Arrays.asList("dst_subnet,subscriber_id");
+  }
+  // reset time
+  public static String convertTimeFields(JsonObject object) {
+
+    long startTime = Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
+    long endTime = startTime + TimeUnit.MINUTES.toMillis(new Random().nextInt(600));
+    object.remove("startTime");
+    object.remove("endTime");
+    object.addProperty("startTime", startTime);
+    object.addProperty("endTime", endTime);
+
+    LOG.info("JSON Updated {}", object.toString());
+    return object.toString();
   }
 }

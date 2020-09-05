@@ -63,9 +63,10 @@ public class JsonToRowValidationTransform
       LOG.debug("log: {}", input);
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
+
         if (InetAddressValidator.getInstance()
             .isValidInet4Address(convertedObject.get("dstIP").getAsString())) {
-          c.output(convertedObject.toString());
+          c.output(Util.convertTimeFields(convertedObject));
 
         } else {
           String errMsg = String.format("Not a valid IP address %s", input);

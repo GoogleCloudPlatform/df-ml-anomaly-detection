@@ -19,6 +19,7 @@ import com.google.api.services.bigquery.model.Clustering;
 import com.google.api.services.bigquery.model.TimePartitioning;
 import com.google.auto.value.AutoValue;
 import java.util.Arrays;
+import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
@@ -35,7 +36,6 @@ import org.slf4j.LoggerFactory;
 public abstract class BQWriteTransform extends PTransform<PCollection<Row>, WriteResult> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BQWriteTransform.class);
-  private static final Integer NUM_OF_SHARDS = 100;
 
   @Nullable
   public abstract Integer batchFrequency();
@@ -43,6 +43,9 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
   public abstract BigQueryIO.Write.Method method();
 
   public abstract String tableSpec();
+
+  @Nullable
+  public abstract List<String> clusterFields();
 
   @Nullable
   public abstract ValueProvider<String> gcsTempLocation();
@@ -61,6 +64,8 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
 
     public abstract Builder setGcsTempLocation(ValueProvider<String> tempLocation);
 
+    public abstract Builder setClusterFields(List<String> clusterFields);
+
     public abstract BQWriteTransform build();
   }
 
@@ -78,16 +83,17 @@ public abstract class BQWriteTransform extends PTransform<PCollection<Row>, Writ
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
                 .withCustomGcsTempLocation(gcsTempLocation())
                 .withTriggeringFrequency(Duration.standardMinutes(batchFrequency()))
-                .withNumFileShards(NUM_OF_SHARDS)
-                .withClustering(
-                    new Clustering().setFields(Arrays.asList("dst_subnet", "subscriber_id")))
-                .withTimePartitioning(new TimePartitioning().setType("DAY")));
+                .withNumFileShards(Util.NUM_OF_SHARDS)
+                .ignoreInsertIds()
+                .withClustering(new Clustering().setFields(clusterFields()))
+                .withTimePartitioning(new TimePartitioning().setType(Util.DAY_PARTITION)));
 
       case STREAMING_INSERTS:
         return row.apply(
             BigQueryIO.<Row>write()
                 .to(tableSpec())
                 .useBeamSchema()
+                .ignoreInsertIds()
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
                 .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
 

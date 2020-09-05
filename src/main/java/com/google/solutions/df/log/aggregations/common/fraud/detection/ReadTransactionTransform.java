@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
 public abstract class ReadTransactionTransform extends PTransform<PBegin, PCollection<Row>> {
   public static final Logger LOG = LoggerFactory.getLogger(ReadTransactionTransform.class);
 
- 
   public abstract String subscriber();
 
   public abstract String filePattern();
@@ -93,7 +92,7 @@ public abstract class ReadTransactionTransform extends PTransform<PBegin, PColle
   public static class JsonValidatorFn extends DoFn<String, String> {
     public Gson gson;
     private final Counter numberOfTransProcessed =
-  	      Metrics.counter(ReadTransactionTransform.class, "numberOfTransProcessed");
+        Metrics.counter(ReadTransactionTransform.class, "numberOfTransProcessed");
 
     @Setup
     public void setup() {

@@ -72,12 +72,24 @@ public class SecureLogAggregationPipeline {
     // read from GCS and pub sub
     PCollection<Row> maybeTokenizedRows =
         p.apply(
-                "Read FlowLog Data",
-                ReadFlowLogTransform.newBuilder()
-                    .setFilePattern(options.getInputFilePattern())
-                    .setPollInterval(DEFAULT_POLL_INTERVAL)
-                    .setSubscriber(options.getSubscriberId())
-                    .build())
+            "Read FlowLog Data",
+            ReadFlowLogTransform.newBuilder()
+                .setFilePattern(options.getInputFilePattern())
+                .setPollInterval(DEFAULT_POLL_INTERVAL)
+                .setSubscriber(options.getSubscriberId())
+                .build());
+    maybeTokenizedRows.apply(
+        "Batch to Log Table",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getLogTableSpec())
+            .setBatchFrequency(options.getBatchFrequency())
+            .setMethod(options.getWriteMethod())
+            .setClusterFields(Util.getRawTableClusterFields())
+            .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+            .build());
+
+    PCollection<Row> featureExtractedRows =
+        maybeTokenizedRows
             .apply(
                 "Fixed Window",
                 Window.<Row>into(
@@ -100,17 +112,18 @@ public class SecureLogAggregationPipeline {
                     .build())
             .setRowSchema(Util.bqLogSchema);
 
-    maybeTokenizedRows.apply(
-        "Batch to Feature Table",
-        BQWriteTransform.newBuilder()
-            .setTableSpec(options.getTableSpec())
-            .setBatchFrequency(options.getBatchFrequency())
-            .setMethod(options.getWriteMethod())
-            .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
-            .build());
+        featureExtractedRows.apply(
+            "Batch to Feature Table",
+            BQWriteTransform.newBuilder()
+                .setTableSpec(options.getTableSpec())
+                .setBatchFrequency(options.getBatchFrequency())
+                .setMethod(options.getWriteMethod())
+                .setClusterFields(Util.getFeatureTableClusterFields())
+                .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+                .build());
 
     // prediction - let's have some fun
-    maybeTokenizedRows
+    featureExtractedRows
         .apply(
             "Anomaly Detection",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())

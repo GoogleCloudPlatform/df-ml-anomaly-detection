@@ -25,7 +25,6 @@ import org.apache.beam.sdk.options.Description;
  *
  * <p>To execute this pipeline locally, specify following params
  */
-@SuppressWarnings("serial")
 public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOptions {
   @Description("Subscriber Id to receive message from")
   String getSubscriberId();
@@ -60,17 +59,22 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
 
   void setClusterQuery(String value);
 
-  @Description("BQ Outlier Table Spec- Must exist as partition table")
+  @Description("BQ Outlier Table Spec - Must exist before the run")
   String getOutlierTableSpec();
 
   void setOutlierTableSpec(String value);
+
+  @Description("BQ Raw Log Data Table Spec- Must exist as partition table")
+  String getLogTableSpec();
+
+  void setLogTableSpec(String value);
 
   @Description("GCS temp location for BQ write")
   String getCustomGcsTempLocation();
 
   void setCustomGcsTempLocation(String value);
 
-  @Description("input file pattern- json files")
+  @Description("input file pattern - json files")
   String getInputFilePattern();
 
   void setInputFilePattern(String value);
