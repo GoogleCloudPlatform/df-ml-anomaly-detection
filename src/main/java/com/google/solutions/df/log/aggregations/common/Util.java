@@ -175,7 +175,7 @@ public class Util {
   }
 
   public static List<String> getFeatureTableClusterFields() {
-    return Arrays.asList("dst_subnet,subscriber_id");
+    return Arrays.asList("dst_subnet","subscriber_id");
   }
   // reset time
   public static String convertTimeFields(JsonObject object) {
