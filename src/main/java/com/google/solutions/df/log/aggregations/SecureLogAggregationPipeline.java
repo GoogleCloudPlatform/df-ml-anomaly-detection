@@ -78,15 +78,18 @@ public class SecureLogAggregationPipeline {
                 .setPollInterval(DEFAULT_POLL_INTERVAL)
                 .setSubscriber(options.getSubscriberId())
                 .build());
-    maybeTokenizedRows.apply(
-        "Batch to Log Table",
-        BQWriteTransform.newBuilder()
-            .setTableSpec(options.getLogTableSpec())
-            .setBatchFrequency(options.getBatchFrequency())
-            .setMethod(options.getWriteMethod())
-            .setClusterFields(Util.getRawTableClusterFields())
-            .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
-            .build());
+    // if enabled, raw log data will be stored in BigQuery.
+    if (options.getLogTableSpec() != null) {
+      maybeTokenizedRows.apply(
+          "Batch to Log Table",
+          BQWriteTransform.newBuilder()
+              .setTableSpec(options.getLogTableSpec())
+              .setBatchFrequency(options.getBatchFrequency())
+              .setMethod(options.getWriteMethod())
+              .setClusterFields(Util.getRawTableClusterFields())
+              .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+              .build());
+    }
 
     PCollection<Row> featureExtractedRows =
         maybeTokenizedRows

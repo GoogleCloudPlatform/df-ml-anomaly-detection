@@ -179,7 +179,7 @@ public class Util {
   }
   // reset time
   public static String convertTimeFields(JsonObject object) {
-	  
+
     long startTime = Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
     long endTime = startTime + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
     object.remove("startTime");
