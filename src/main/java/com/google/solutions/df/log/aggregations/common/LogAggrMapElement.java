@@ -29,7 +29,7 @@ public class LogAggrMapElement extends SimpleFunction<Row, Row> {
 
     String dstSubnet = Util.findSubnet(row.getString("dstIP"));
 
-    Long duration = Util.findDuration(row.getInt64("startTime"), row.getInt64("endTime"));
+    Integer duration = Util.findDuration(row.getInt64("startTime"), row.getInt64("endTime"));
 
     return Row.withSchema(row.getSchema())
         .addValues(
@@ -46,7 +46,7 @@ public class LogAggrMapElement extends SimpleFunction<Row, Row> {
             row.getString("protocolName"),
             row.getInt32("protocolNumber"),
             dstSubnet,
-            duration.intValue())
+            duration)
         .build();
   }
 }

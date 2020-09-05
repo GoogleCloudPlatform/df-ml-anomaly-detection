@@ -112,15 +112,15 @@ public class SecureLogAggregationPipeline {
                     .build())
             .setRowSchema(Util.bqLogSchema);
 
-        featureExtractedRows.apply(
-            "Batch to Feature Table",
-            BQWriteTransform.newBuilder()
-                .setTableSpec(options.getTableSpec())
-                .setBatchFrequency(options.getBatchFrequency())
-                .setMethod(options.getWriteMethod())
-                .setClusterFields(Util.getFeatureTableClusterFields())
-                .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
-                .build());
+    featureExtractedRows.apply(
+        "Batch to Feature Table",
+        BQWriteTransform.newBuilder()
+            .setTableSpec(options.getTableSpec())
+            .setBatchFrequency(options.getBatchFrequency())
+            .setMethod(options.getWriteMethod())
+            .setClusterFields(Util.getFeatureTableClusterFields())
+            .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+            .build());
 
     // prediction - let's have some fun
     featureExtractedRows

@@ -37,6 +37,7 @@ import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.net.util.SubnetUtils;
+import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 import org.joda.time.Period;
@@ -116,10 +117,12 @@ public class Util {
     return new SubnetUtils(dstIP, maskString).getInfo().getCidrSignature();
   }
 
-  public static Long findDuration(long startTime, long endTime) {
+  public static Integer findDuration(long startTime, long endTime) {
 
-    Period period = new Period(startTime, endTime, PeriodType.millis());
-    return Long.valueOf(Math.abs(period.getMillis()));
+    DateTime start = new DateTime(startTime);
+    DateTime end = new DateTime(endTime);
+    Period period = new Period(start, end, PeriodType.millis());
+    return Math.abs(period.getMillis());
   }
 
   public static String getTimeStamp() {
@@ -176,15 +179,13 @@ public class Util {
   }
   // reset time
   public static String convertTimeFields(JsonObject object) {
-
+	  
     long startTime = Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
-    long endTime = startTime + TimeUnit.MINUTES.toMillis(new Random().nextInt(600));
+    long endTime = startTime + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
     object.remove("startTime");
     object.remove("endTime");
     object.addProperty("startTime", startTime);
     object.addProperty("endTime", endTime);
-
-    LOG.info("JSON Updated {}", object.toString());
     return object.toString();
   }
 }
