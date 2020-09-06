@@ -43,10 +43,27 @@ public class JsonToRowValidationTransform
             "Validated Json",
             ParDo.of(new JsonValidatorFn())
                 .withOutputTags(Util.successTag, TupleTagList.of(Util.failureTag)));
-    return output
-        .get(Util.successTag)
-        .apply("Convert To Row", JsonToRow.withSchema(Util.networkLogSchema))
-        .setRowSchema(Util.networkLogSchema);
+    PCollection<Row> logRow =
+        output
+            .get(Util.successTag)
+            .apply("Convert To Row", JsonToRow.withSchema(Util.networkLogSchema))
+            .setRowSchema(Util.networkLogSchema);
+
+    return logRow.apply(
+        "ModifiedRow",
+        ParDo.of(
+            new DoFn<Row, Row>() {
+
+              @ProcessElement
+              public void processElement(ProcessContext c) {
+                Row modifiedRow =
+                    Row.fromRow(c.element())
+                        .withFieldValue("startTime", Util.currentStartTime())
+                        .withFieldValue("endTime", Util.currentEndTime())
+                        .build();
+                c.output(modifiedRow);
+              }
+            })).setRowSchema(Util.networkLogSchema);
   }
 
   public static class JsonValidatorFn extends DoFn<String, String> {
@@ -66,7 +83,7 @@ public class JsonToRowValidationTransform
 
         if (InetAddressValidator.getInstance()
             .isValidInet4Address(convertedObject.get("dstIP").getAsString())) {
-          c.output(Util.convertTimeFields(convertedObject));
+          c.output(convertedObject.toString());
 
         } else {
           String errMsg = String.format("Not a valid IP address %s", input);

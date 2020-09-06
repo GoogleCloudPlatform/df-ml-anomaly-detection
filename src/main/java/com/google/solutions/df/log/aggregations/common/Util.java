@@ -52,6 +52,7 @@ public class Util {
   public static final Logger LOG = LoggerFactory.getLogger(Util.class);
   public static TupleTag<String> failureTag = new TupleTag<String>() {};
   public static TupleTag<String> successTag = new TupleTag<String>() {};
+
   public static final String DAY_PARTITION = "DAY";
   public static final Integer NUM_OF_SHARDS = 100;
 
@@ -175,17 +176,16 @@ public class Util {
   }
 
   public static List<String> getFeatureTableClusterFields() {
-    return Arrays.asList("dst_subnet","subscriber_id");
+    return Arrays.asList("dst_subnet", "subscriber_id");
   }
-  // reset time
-  public static String convertTimeFields(JsonObject object) {
 
-    long startTime = Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
-    long endTime = startTime + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
-    object.remove("startTime");
-    object.remove("endTime");
-    object.addProperty("startTime", startTime);
-    object.addProperty("endTime", endTime);
-    return object.toString();
+  public static Long currentStartTime() {
+    return Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
   }
+
+  public static Long currentEndTime() {
+    return currentStartTime() + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
+  }
+
+  
 }
