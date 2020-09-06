@@ -148,8 +148,7 @@ spotless {
     googleJavaFormat()
   }
 }
-sourceSets.main.resources.srcDirs = [ "src/" ]
-sourceSets.main.resources.includes = [ "**/*.mmdb" ]
+
 
 jib {
   from {
