@@ -19,9 +19,9 @@ import com.google.solutions.df.log.aggregations.common.BQWriteTransform;
 import com.google.solutions.df.log.aggregations.common.CentroidVector;
 import com.google.solutions.df.log.aggregations.common.ClusterDataMapElement;
 import com.google.solutions.df.log.aggregations.common.DLPTransform;
-import com.google.solutions.df.log.aggregations.common.IpToGeoDoFn;
 import com.google.solutions.df.log.aggregations.common.LogRowTransform;
 import com.google.solutions.df.log.aggregations.common.PredictTransform;
+import com.google.solutions.df.log.aggregations.common.RawLogDataTransform;
 import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
@@ -32,7 +32,6 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
-import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -81,12 +80,14 @@ public class SecureLogAggregationPipeline {
                 .setPollInterval(DEFAULT_POLL_INTERVAL)
                 .setSubscriber(options.getSubscriberId())
                 .build());
-    // if enabled, raw log data will be stored in BigQuery.
+    // if passed, raw log data will be stored with country where IP is originated.
     if (options.getLogTableSpec() != null) {
 
       maybeTokenizedRows
-          .apply("ConvertIpToGeo", ParDo.of(new IpToGeoDoFn()))
-          .setRowSchema(Util.networkLogSchema)
+          .apply(
+              "ConvertIpToGeo",
+              RawLogDataTransform.newBuilder().setDbPath(options.getGeoDbpath()).build())
+          .setRowSchema(Util.networkLogSchemaWithGeo)
           .apply(
               "Batch to Log Table",
               BQWriteTransform.newBuilder()

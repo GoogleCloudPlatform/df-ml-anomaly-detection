@@ -73,6 +73,22 @@ public class Util {
               Schema.Field.of("protocolName", FieldType.STRING).withNullable(true),
               Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true))
           .collect(toSchema());
+  public static final Schema networkLogSchemaWithGeo =
+      Stream.of(
+              Schema.Field.of("subscriberId", FieldType.STRING).withNullable(true),
+              Schema.Field.of("srcIP", FieldType.STRING).withNullable(true),
+              Schema.Field.of("dstIP", FieldType.STRING).withNullable(true),
+              Schema.Field.of("srcPort", FieldType.INT32).withNullable(true),
+              Schema.Field.of("dstPort", FieldType.INT32).withNullable(true),
+              Schema.Field.of("txBytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("rxBytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("startTime", FieldType.INT64).withNullable(true),
+              Schema.Field.of("endTime", FieldType.INT64).withNullable(true),
+              Schema.Field.of("tcpFlag", FieldType.INT32).withNullable(true),
+              Schema.Field.of("protocolName", FieldType.STRING).withNullable(true),
+              Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true),
+              Schema.Field.of("geoCountry", FieldType.STRING).withNullable(true))
+          .collect(toSchema());
 
   public static final Schema bqLogSchema =
       Stream.of(

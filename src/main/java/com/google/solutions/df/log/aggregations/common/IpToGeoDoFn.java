@@ -27,7 +27,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.channels.Channels;
+import java.util.Optional;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.Row;
@@ -40,11 +42,15 @@ public class IpToGeoDoFn extends DoFn<Row, Row> {
   private DatabaseReader reader;
   private ReadChannel readerChannel;
   private InputStream inputStream;
+  private String geoDbPath;
+
+  public IpToGeoDoFn(String geoDbPath) {
+    this.geoDbPath = geoDbPath;
+  }
 
   @Setup
   public void setup() throws GeoIp2Exception, IOException {
-    GcsPath path =
-        GcsPath.fromUri(URI.create("gs://df-ml-anomaly-detection-mock-data/GeoLite2-Country.mmdb"));
+    GcsPath path = GcsPath.fromUri(URI.create(geoDbPath));
     Storage storage = StorageOptions.getDefaultInstance().getService();
     readerChannel = storage.reader(path.getBucket(), path.getObject());
     inputStream = Channels.newInputStream(readerChannel);
@@ -64,16 +70,17 @@ public class IpToGeoDoFn extends DoFn<Row, Row> {
   }
 
   @ProcessElement
-  public void processElement(ProcessContext c) {
-
+  public void processElement(ProcessContext c)
+      throws UnknownHostException, IOException, GeoIp2Exception {
     String srcIP = c.element().getString("srcIP");
-    try {
-      CountryResponse country = reader.country(InetAddress.getByName(srcIP));
-      LOG.info("Country {}", country.getCountry().getName());
+    Optional<CountryResponse> country = reader.tryCountry(InetAddress.getByName(srcIP));
+    if (country.isPresent()) {
+      Row defaultRowWithGeo = c.element();
+      c.output(Row.fromRow(defaultRowWithGeo)
+          .withFieldValue("geoCountry", country.get().getCountry().getName()).build());
+
+    } else {
       c.output(c.element());
-    } catch (Exception e) {
-      c.output(c.element());
-      LOG.error("Not found {}", srcIP);
     }
   }
 }

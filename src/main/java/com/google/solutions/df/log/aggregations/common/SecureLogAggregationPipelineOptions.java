@@ -100,4 +100,10 @@ public interface SecureLogAggregationPipelineOptions extends DataflowPipelineOpt
   String getDeidTemplateName();
 
   void setDeidTemplateName(String value);
+
+  @Description("GCS path for geo lite db")
+  @Default.String("gs://df-ml-anomaly-detection-mock-data/GeoLite2-Country.mmdb")
+  String getGeoDbpath();
+
+  void setGeoDbpath(String value);
 }

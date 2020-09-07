@@ -58,5 +58,10 @@
     "mode": "NULLABLE",
     "name": "protocolNumber",
     "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geoCountry",
+    "type": "STRING"
   }
 ]
