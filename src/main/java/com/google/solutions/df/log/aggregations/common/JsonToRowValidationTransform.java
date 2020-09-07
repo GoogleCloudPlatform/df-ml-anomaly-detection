@@ -82,9 +82,13 @@ public class JsonToRowValidationTransform
       LOG.debug("log: {}", input);
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
+        boolean validData =
+            InetAddressValidator.getInstance()
+                    .isValidInet4Address(convertedObject.get("dstIP").getAsString())
+                && InetAddressValidator.getInstance()
+                    .isValidInet4Address(convertedObject.get("srcIP").getAsString());
 
-        if (InetAddressValidator.getInstance()
-            .isValidInet4Address(convertedObject.get("dstIP").getAsString())) {
+        if (validData) {
           c.output(convertedObject.toString());
 
         } else {

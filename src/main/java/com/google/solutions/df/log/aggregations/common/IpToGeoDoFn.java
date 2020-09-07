@@ -76,8 +76,8 @@ public class IpToGeoDoFn extends DoFn<Row, Row> {
     Optional<CountryResponse> country = reader.tryCountry(InetAddress.getByName(srcIP));
     if (country.isPresent()) {
       Row defaultRowWithGeo = c.element();
-      c.output(Row.fromRow(defaultRowWithGeo)
-          .withFieldValue("geoCountry", country.get().getCountry().getName()).build());
+      String countryName = country.get().getCountry().getName();
+      c.output(Row.fromRow(defaultRowWithGeo).withFieldValue("geoCountry", countryName).build());
 
     } else {
       c.output(c.element());
