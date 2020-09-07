@@ -49,21 +49,23 @@ public class JsonToRowValidationTransform
             .apply("Convert To Row", JsonToRow.withSchema(Util.networkLogSchema))
             .setRowSchema(Util.networkLogSchema);
 
-    return logRow.apply(
-        "ModifiedRow",
-        ParDo.of(
-            new DoFn<Row, Row>() {
+    return logRow
+        .apply(
+            "ModifiedRow",
+            ParDo.of(
+                new DoFn<Row, Row>() {
 
-              @ProcessElement
-              public void processElement(ProcessContext c) {
-                Row modifiedRow =
-                    Row.fromRow(c.element())
-                        .withFieldValue("startTime", Util.currentStartTime())
-                        .withFieldValue("endTime", Util.currentEndTime())
-                        .build();
-                c.output(modifiedRow);
-              }
-            })).setRowSchema(Util.networkLogSchema);
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Row modifiedRow =
+                        Row.fromRow(c.element())
+                            .withFieldValue("startTime", Util.currentStartTime())
+                            .withFieldValue("endTime", Util.currentEndTime())
+                            .build();
+                    c.output(modifiedRow);
+                  }
+                }))
+        .setRowSchema(Util.networkLogSchema);
   }
 
   public static class JsonValidatorFn extends DoFn<String, String> {

@@ -25,12 +25,7 @@ import com.google.solutions.df.log.aggregations.common.PredictTransform;
 import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
-
-import java.io.File;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -60,7 +55,7 @@ public class SecureLogAggregationPipeline {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(SecureLogAggregationPipelineOptions.class);
-   
+
     run(options);
   }
 
@@ -88,18 +83,19 @@ public class SecureLogAggregationPipeline {
                 .build());
     // if enabled, raw log data will be stored in BigQuery.
     if (options.getLogTableSpec() != null) {
-      
-    	maybeTokenizedRows.apply("ConvertIpToGeo",ParDo.of(new IpToGeoDoFn()))
-    	.setRowSchema(Util.networkLogSchema)
-    	.apply(
-          "Batch to Log Table",
-          BQWriteTransform.newBuilder()
-              .setTableSpec(options.getLogTableSpec())
-              .setBatchFrequency(options.getBatchFrequency())
-              .setMethod(options.getWriteMethod())
-              .setClusterFields(Util.getRawTableClusterFields())
-              .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
-              .build());
+
+      maybeTokenizedRows
+          .apply("ConvertIpToGeo", ParDo.of(new IpToGeoDoFn()))
+          .setRowSchema(Util.networkLogSchema)
+          .apply(
+              "Batch to Log Table",
+              BQWriteTransform.newBuilder()
+                  .setTableSpec(options.getLogTableSpec())
+                  .setBatchFrequency(options.getBatchFrequency())
+                  .setMethod(options.getWriteMethod())
+                  .setClusterFields(Util.getRawTableClusterFields())
+                  .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+                  .build());
     }
 
     PCollection<Row> featureExtractedRows =

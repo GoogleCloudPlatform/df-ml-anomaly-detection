@@ -22,7 +22,6 @@ import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableList;
-import com.google.gson.JsonObject;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -186,6 +185,4 @@ public class Util {
   public static Long currentEndTime() {
     return currentStartTime() + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
   }
-
-  
 }
