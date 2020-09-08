@@ -47,7 +47,12 @@ public abstract class RawLogDataTransform extends PTransform<PCollection<Row>, P
   public PCollection<Row> expand(PCollection<Row> input) {
 
     return input
-        .apply("AddGeoColumn", AddFields.<Row>create().field("geoCountry", Schema.FieldType.STRING))
+        .apply("AddGeoColumn", 
+        		AddFields.<Row>create()
+        		.field("geoCountry", Schema.FieldType.STRING)
+        		.field("geoCity", Schema.FieldType.STRING)
+        		.field("latitude", Schema.FieldType.DOUBLE)
+        		.field("longitude", Schema.FieldType.DOUBLE))
         .setRowSchema(Util.networkLogSchemaWithGeo)
         .apply("FindGeo", ParDo.of(new IpToGeoDoFn(dbPath())));
   }

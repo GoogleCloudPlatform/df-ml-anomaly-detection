@@ -87,7 +87,10 @@ public class Util {
               Schema.Field.of("tcpFlag", FieldType.INT32).withNullable(true),
               Schema.Field.of("protocolName", FieldType.STRING).withNullable(true),
               Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true),
-              Schema.Field.of("geoCountry", FieldType.STRING).withNullable(true))
+              Schema.Field.of("geoCountry", FieldType.STRING).withNullable(true),
+              Schema.Field.of("geoCity", FieldType.STRING).withNullable(true),
+              Schema.Field.of("latitude", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("longitude", FieldType.DOUBLE).withNullable(true))
           .collect(toSchema());
 
   public static final Schema bqLogSchema =
@@ -187,7 +190,7 @@ public class Util {
   }
 
   public static List<String> getRawTableClusterFields() {
-    return Arrays.asList("srcIP");
+    return Arrays.asList("geoCountry", "geoCity");
   }
 
   public static List<String> getFeatureTableClusterFields() {

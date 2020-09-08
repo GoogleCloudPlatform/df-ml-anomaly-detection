@@ -63,5 +63,20 @@
     "mode": "NULLABLE",
     "name": "geoCountry",
     "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geoCity",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "latitude",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "longitude",
+    "type": "FLOAT"
   }
 ]

@@ -22,6 +22,7 @@ import com.maxmind.db.CHMCache;
 import com.maxmind.db.Reader.FileMode;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
+import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.model.CountryResponse;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,11 +74,21 @@ public class IpToGeoDoFn extends DoFn<Row, Row> {
   public void processElement(ProcessContext c)
       throws UnknownHostException, IOException, GeoIp2Exception {
     String srcIP = c.element().getString("srcIP");
-    Optional<CountryResponse> country = reader.tryCountry(InetAddress.getByName(srcIP));
-    if (country.isPresent()) {
+    Optional<CityResponse> response = reader.tryCity(InetAddress.getByName(srcIP));
+    if (response.isPresent()) {
       Row defaultRowWithGeo = c.element();
-      String countryName = country.get().getCountry().getName();
-      c.output(Row.fromRow(defaultRowWithGeo).withFieldValue("geoCountry", countryName).build());
+      String countryName = response.get().getCountry().getName();
+      String cityName = response.get().getCity().getName();
+      Double latitude = response.get().getLocation().getLatitude();
+      Double longitude = response.get().getLocation().getLongitude();
+
+      
+      c.output(Row.fromRow(defaultRowWithGeo)
+    		  .withFieldValue("geoCountry", countryName)
+    		  .withFieldValue("geoCity", cityName)
+    		  .withFieldValue("latitude", latitude)
+    		  .withFieldValue("longitude", longitude)
+    		  .build());
 
     } else {
       c.output(c.element());
