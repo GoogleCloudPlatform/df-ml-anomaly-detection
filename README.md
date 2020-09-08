@@ -535,7 +535,7 @@ If you click on DLP Transformation from the DAG, you will see following sub tran
 
 
 ### Looker Integration
-Addition to feature and outlier tables, you can  also include raw netflow log data in a BigQuery table. This includes geo location data like country, city, latitude, longitude derived from the simulated IP.  Pipeline uses (MaxMind-GeoIP2 Java API)[https://maxmind.github.io/GeoIP2-java/]. 
+Addition to feature and outlier tables, you can  also include raw netflow log data in a BigQuery table. This includes geo location data like country, city, latitude, longitude derived from the simulated IP.  Pipeline uses [MaxMind-GeoIP2 Java API](https://maxmind.github.io/GeoIP2-java/). 
 #### Create a table to store raw log netflow data 
 
 ```
