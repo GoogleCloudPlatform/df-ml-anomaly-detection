@@ -43,9 +43,28 @@ public class JsonToRowValidationTransform
             "Validated Json",
             ParDo.of(new JsonValidatorFn())
                 .withOutputTags(Util.successTag, TupleTagList.of(Util.failureTag)));
-    return output
-        .get(Util.successTag)
-        .apply("Convert To Row", JsonToRow.withSchema(Util.networkLogSchema))
+    PCollection<Row> logRow =
+        output
+            .get(Util.successTag)
+            .apply("Convert To Row", JsonToRow.withSchema(Util.networkLogSchema))
+            .setRowSchema(Util.networkLogSchema);
+
+    return logRow
+        .apply(
+            "ModifiedRow",
+            ParDo.of(
+                new DoFn<Row, Row>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Row modifiedRow =
+                        Row.fromRow(c.element())
+                            .withFieldValue("startTime", Util.currentStartTime())
+                            .withFieldValue("endTime", Util.currentEndTime())
+                            .build();
+                    c.output(modifiedRow);
+                  }
+                }))
         .setRowSchema(Util.networkLogSchema);
   }
 
@@ -63,8 +82,13 @@ public class JsonToRowValidationTransform
       LOG.debug("log: {}", input);
       try {
         JsonObject convertedObject = gson.fromJson(input, JsonObject.class);
-        if (InetAddressValidator.getInstance()
-            .isValidInet4Address(convertedObject.get("dstIP").getAsString())) {
+        boolean validData =
+            InetAddressValidator.getInstance()
+                    .isValidInet4Address(convertedObject.get("dstIP").getAsString())
+                && InetAddressValidator.getInstance()
+                    .isValidInet4Address(convertedObject.get("srcIP").getAsString());
+
+        if (validData) {
           c.output(convertedObject.toString());
 
         } else {

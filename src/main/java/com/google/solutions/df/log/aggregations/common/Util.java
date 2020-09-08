@@ -23,7 +23,10 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.collect.ImmutableList;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
@@ -49,6 +52,9 @@ public class Util {
   public static TupleTag<String> failureTag = new TupleTag<String>() {};
   public static TupleTag<String> successTag = new TupleTag<String>() {};
 
+  public static final String DAY_PARTITION = "DAY";
+  public static final Integer NUM_OF_SHARDS = 100;
+
   private static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   private static final String maskString = "255.255.252.0";
@@ -66,6 +72,25 @@ public class Util {
               Schema.Field.of("tcpFlag", FieldType.INT32).withNullable(true),
               Schema.Field.of("protocolName", FieldType.STRING).withNullable(true),
               Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true))
+          .collect(toSchema());
+  public static final Schema networkLogSchemaWithGeo =
+      Stream.of(
+              Schema.Field.of("subscriberId", FieldType.STRING).withNullable(true),
+              Schema.Field.of("srcIP", FieldType.STRING).withNullable(true),
+              Schema.Field.of("dstIP", FieldType.STRING).withNullable(true),
+              Schema.Field.of("srcPort", FieldType.INT32).withNullable(true),
+              Schema.Field.of("dstPort", FieldType.INT32).withNullable(true),
+              Schema.Field.of("txBytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("rxBytes", FieldType.INT32).withNullable(true),
+              Schema.Field.of("startTime", FieldType.INT64).withNullable(true),
+              Schema.Field.of("endTime", FieldType.INT64).withNullable(true),
+              Schema.Field.of("tcpFlag", FieldType.INT32).withNullable(true),
+              Schema.Field.of("protocolName", FieldType.STRING).withNullable(true),
+              Schema.Field.of("protocolNumber", FieldType.INT32).withNullable(true),
+              Schema.Field.of("geoCountry", FieldType.STRING).withNullable(true),
+              Schema.Field.of("geoCity", FieldType.STRING).withNullable(true),
+              Schema.Field.of("latitude", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("longitude", FieldType.DOUBLE).withNullable(true))
           .collect(toSchema());
 
   public static final Schema bqLogSchema =
@@ -162,5 +187,21 @@ public class Util {
 
   public static String randomKeyGenerator(Integer range) {
     return String.valueOf(new Random().nextInt(range * 100));
+  }
+
+  public static List<String> getRawTableClusterFields() {
+    return Arrays.asList("geoCountry", "geoCity");
+  }
+
+  public static List<String> getFeatureTableClusterFields() {
+    return Arrays.asList("dst_subnet", "subscriber_id");
+  }
+
+  public static Long currentStartTime() {
+    return Instant.now().toDateTime(DateTimeZone.UTC).getMillis();
+  }
+
+  public static Long currentEndTime() {
+    return currentStartTime() + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
   }
 }

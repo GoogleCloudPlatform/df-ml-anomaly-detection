@@ -21,6 +21,7 @@ import com.google.solutions.df.log.aggregations.common.ClusterDataMapElement;
 import com.google.solutions.df.log.aggregations.common.DLPTransform;
 import com.google.solutions.df.log.aggregations.common.LogRowTransform;
 import com.google.solutions.df.log.aggregations.common.PredictTransform;
+import com.google.solutions.df.log.aggregations.common.RawLogDataTransform;
 import com.google.solutions.df.log.aggregations.common.ReadFlowLogTransform;
 import com.google.solutions.df.log.aggregations.common.SecureLogAggregationPipelineOptions;
 import com.google.solutions.df.log.aggregations.common.Util;
@@ -53,6 +54,7 @@ public class SecureLogAggregationPipeline {
         PipelineOptionsFactory.fromArgs(args)
             .withValidation()
             .as(SecureLogAggregationPipelineOptions.class);
+
     run(options);
   }
 
@@ -72,12 +74,33 @@ public class SecureLogAggregationPipeline {
     // read from GCS and pub sub
     PCollection<Row> maybeTokenizedRows =
         p.apply(
-                "Read FlowLog Data",
-                ReadFlowLogTransform.newBuilder()
-                    .setFilePattern(options.getInputFilePattern())
-                    .setPollInterval(DEFAULT_POLL_INTERVAL)
-                    .setSubscriber(options.getSubscriberId())
-                    .build())
+            "Read FlowLog Data",
+            ReadFlowLogTransform.newBuilder()
+                .setFilePattern(options.getInputFilePattern())
+                .setPollInterval(DEFAULT_POLL_INTERVAL)
+                .setSubscriber(options.getSubscriberId())
+                .build());
+    // if passed, raw log data will be stored with country where IP is originated.
+    if (options.getLogTableSpec() != null) {
+
+      maybeTokenizedRows
+          .apply(
+              "ConvertIpToGeo",
+              RawLogDataTransform.newBuilder().setDbPath(options.getGeoDbpath()).build())
+          .setRowSchema(Util.networkLogSchemaWithGeo)
+          .apply(
+              "Batch to Log Table",
+              BQWriteTransform.newBuilder()
+                  .setTableSpec(options.getLogTableSpec())
+                  .setBatchFrequency(options.getBatchFrequency())
+                  .setMethod(options.getWriteMethod())
+                  .setClusterFields(Util.getRawTableClusterFields())
+                  .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
+                  .build());
+    }
+
+    PCollection<Row> featureExtractedRows =
+        maybeTokenizedRows
             .apply(
                 "Fixed Window",
                 Window.<Row>into(
@@ -100,17 +123,18 @@ public class SecureLogAggregationPipeline {
                     .build())
             .setRowSchema(Util.bqLogSchema);
 
-    maybeTokenizedRows.apply(
+    featureExtractedRows.apply(
         "Batch to Feature Table",
         BQWriteTransform.newBuilder()
             .setTableSpec(options.getTableSpec())
             .setBatchFrequency(options.getBatchFrequency())
             .setMethod(options.getWriteMethod())
+            .setClusterFields(Util.getFeatureTableClusterFields())
             .setGcsTempLocation(StaticValueProvider.of(options.getCustomGcsTempLocation()))
             .build());
 
     // prediction - let's have some fun
-    maybeTokenizedRows
+    featureExtractedRows
         .apply(
             "Anomaly Detection",
             PredictTransform.newBuilder().setCentroidFeatureVector(centroidFeatures).build())

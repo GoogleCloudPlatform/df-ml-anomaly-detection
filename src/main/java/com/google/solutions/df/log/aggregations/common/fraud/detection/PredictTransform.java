@@ -15,6 +15,25 @@
  */
 package com.google.solutions.df.log.aggregations.common.fraud.detection;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpContent;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.UriTemplate;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.discovery.Discovery;
+import com.google.api.services.discovery.model.JsonSchema;
+import com.google.api.services.discovery.model.RestDescription;
+import com.google.api.services.discovery.model.RestMethod;
+import com.google.auto.value.AutoValue;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -24,7 +43,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.state.BagState;
@@ -49,26 +67,6 @@ import org.apache.beam.sdk.values.Row;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.ByteArrayContent;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpContent;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.UriTemplate;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.discovery.Discovery;
-import com.google.api.services.discovery.model.JsonSchema;
-import com.google.api.services.discovery.model.RestDescription;
-import com.google.api.services.discovery.model.RestMethod;
-import com.google.auto.value.AutoValue;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 @AutoValue
 public abstract class PredictTransform extends PTransform<PCollection<Row>, PCollection<Row>> {
@@ -238,8 +236,7 @@ public abstract class PredictTransform extends PTransform<PCollection<Row>, PCol
     private GoogleCredential credential;
     private Gson json;
     private final Counter numberOfOutliersFound =
-    	      Metrics.counter(ReadTransactionTransform.class, "numberOfOutliersFound");
-
+        Metrics.counter(ReadTransactionTransform.class, "numberOfOutliersFound");
 
     public PredictRemote(String projectId, String modelId, String versionId, Double probability) {
       this.projectId = projectId;

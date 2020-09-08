@@ -1,0 +1,82 @@
+[
+  {
+    "mode": "NULLABLE",
+    "name": "subscriberId",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "srcIP",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "dstIP",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "srcPort",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "dstPort",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "txBytes",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "rxBytes",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "startTime",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "endTime",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "tcpFlag",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "protocolName",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "protocolNumber",
+    "type": "INTEGER"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geoCountry",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "geoCity",
+    "type": "STRING"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "latitude",
+    "type": "FLOAT"
+  },
+  {
+    "mode": "NULLABLE",
+    "name": "longitude",
+    "type": "FLOAT"
+  }
+]

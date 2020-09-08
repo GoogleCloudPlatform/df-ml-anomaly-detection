@@ -14,6 +14,7 @@ This repo provides a reference implementation of a Cloud Dataflow streaming pipe
 	* [Feature Extraction Using Dataflow](#feature-extraction-after-aggregation). 
 	* [Realtime outlier detection using Dataflow](#find-the-outliers). 
 	* [Sensitive data (IMSI) de-identification using Cloud DLP](#dlp-integration). 
+	* [Looker Integration](#looker-integration). 
 	
 * [Anomaly detection in Financial Transactions](#anomaly-detection-in-financial-transactions). 
 	* [Reference Architecture](#anomaly-detection-reference-architecture-using-cloud-ai). 
@@ -87,7 +88,7 @@ If you have all other resources like BigQuery tables, PubSub topic and subscribe
 
 Generate 10k msg/sec of random net flow log data:
 ```
-gcloud beta dataflow flex-template run data-generator --project=<project_id> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_data_generator_template.json --parameters=autoscalingAlgorithm="NONE",numWorkers=5,maxNumWorkers=5,workerMachineType=n1-standard-4,qps=10000,schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/next-demo-schema.json,eventType=net-flow-log,topic=projects/next-demo-2020/topics/events
+gcloud beta dataflow flex-template run data-generator --project=<project_id> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_data_generator_template.json --parameters=autoscalingAlgorithm="NONE",numWorkers=5,maxNumWorkers=5,workerMachineType=n1-standard-4,qps=10000,schemaLocation=gs://df-ml-anomaly-detection-mock-data/schema/next-demo-schema.json,eventType=net-flow-log,topic=projects/<project_id>/topics/events
 ```
 Generate 1k msg/sec of random outlier data:
 ```
@@ -531,6 +532,33 @@ If you click on DLP Transformation from the DAG, you will see following sub tran
 
 ![ref_arch](diagram/new_dlp_dag.png)
 
+
+
+### Looker Integration
+Addition to feature and outlier tables, you can  also include raw netflow log data in a BigQuery table. This includes geo location data like country, city, latitude, longitude derived from the simulated IP.  Pipeline uses [MaxMind-GeoIP2 Java API](https://maxmind.github.io/GeoIP2-java/). 
+#### Create a table to store raw log netflow data 
+
+```
+bq mk -t --schema src/main/resources/netflow_log_raw_datat.json \
+--time_partitioning_type=DAY \
+--clustering_fields="geoCountry,geoCity" \
+--description "Raw Netflow Log Data" \
+${PROJECT_ID}:${DATASET_NAME}.netflow_log_data
+
+```
+
+####
+Pass the parameter in the pipeline. If not passed, pipeline assumes no need to store raw log data. Feature and outlier data will be stored as expected.
+
+```
+--logTableSpec=<project_id>:<dataset>.netflow_log_data
+```
+
+
+![log_data_dag](diagram/with_log_data_dag.png)
+
+![log_data_dag](diagram/raw_log_data_schema.png)
+
 ## Anomaly Detection in Financial Transactions
 This section of this repo contains a reference implementation of finding fraudulent transactions using Dataflow and Cloud AI. First step is to create a TensorFlow  boosted tree model  by using a [Kaggle dataset](https://www.kaggle.com/ntnu-testimon/paysim1) and deploy the model in Cloud AI for online prediction. Then uses a Dataflow pipeline highlighted in the reference architecture below to micro batch the request for online prediction.  Finally, the transaction data is stored in a BigQuery table called transactions and outlier data is stored in a table called fraud_prediction. Data can be joined between two tables  by transactionId column.  By default, probability is set to 0.99 (99%) to identify the fraudulent transactions. 
 
@@ -539,7 +567,7 @@ This section of this repo contains a reference implementation of finding fraudul
 
 
 ## Trigger the pipeline using Flex Template
-You can use the command below to trigger the pipline using a public image as a Dataflow flex template
+You can use the command below to trigger the pipeline using a public image as a Dataflow flex template
 
 ```
 gcloud beta dataflow flex-template run "anomaly-detection-finserv" --project=<project> --region=<region> --template-file-gcs-location=gs://df-ml-anomaly-detection-mock-data/dataflow-flex-template/dynamic_template_finserv_fraud_detection.json --parameters=autoscalingAlgorithm="NONE",numWorkers=30,maxNumWorkers=30,workerMachineType=n1-highmem-8,subscriberId=projects/<id>/subscriptions/<id>,tableSpec=project:dataset.transactions,outlierTableSpec=project:dataset.fraud_prediction,tempLocation=gs://<bucket>/temp,inputFilePattern=gs://df-ml-anomaly-detection-mock-data/finserv_fraud_detection/fraud_data_kaggle.json,modelId=<id>,versionId=<id>,keyRange=1024,batchSize=500000
