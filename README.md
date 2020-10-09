@@ -547,7 +547,7 @@ ${PROJECT_ID}:${DATASET_NAME}.netflow_log_data
 
 ```
 #### Looker repo 
-You can leverage this [open source code] (https://github.com/llooker/anomaly_detection_network_logs/tree/master)  to import the Looker dashboard and underlying LookML for your use.
+You can leverage this [open source code](https://github.com/llooker/anomaly_detection_network_logs/tree/master) to import the Looker dashboard and underlying LookML for your use.
 
 ####
 Pass the parameter in the pipeline. If not passed, pipeline assumes no need to store raw log data. Feature and outlier data will be stored as expected.
