@@ -27,7 +27,7 @@ This section of the repo contains a reference implementation of an ML based Netw
 
 Securing its internal network from malware and security threats is critical at many customers. With the ever changing malware landscape and explosion of activities in IoT and M2M, existing signature based solutions for malware detection are no longer sufficient. This PoC highlights an ML based network anomaly detection solution using PubSub, Dataflow, BQ ML and DLP to detect mobile malware on subscriber devices and suspicious behaviour in wireless networks.
 
-This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in netflow logs  in real time.  This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>.   
+This solution implements the reference architecture highlighted below. You will execute a <b>dataflow streaming pipeline</b> to process netflow log from GCS and/or PubSub to find outliers in netflow logs  in real time.  This solution also uses a built in K-Means Clustering Model created by using <b>BQ-ML</b>. To see a step-by-step tutorial that walks you through implementing this solution, see [Building a secure anomaly detection solution using Dataflow, BigQuery ML, and Cloud Data Loss Prevention](https://cloud.google.com/solutions/building-anomaly-detection-dataflow-bigqueryml-dlp).   
 
 In summary, you can use this solution to demo following 3 use cases :
 
@@ -563,6 +563,8 @@ Pass the parameter in the pipeline. If not passed, pipeline assumes no need to s
 
 ## Anomaly Detection in Financial Transactions
 This section of this repo contains a reference implementation of finding fraudulent transactions using Dataflow and Cloud AI. First step is to create a TensorFlow  boosted tree model  by using a [Kaggle dataset](https://www.kaggle.com/ntnu-testimon/paysim1) and deploy the model in Cloud AI for online prediction. Then uses a Dataflow pipeline highlighted in the reference architecture below to micro batch the request for online prediction.  Finally, the transaction data is stored in a BigQuery table called transactions and outlier data is stored in a table called fraud_prediction. Data can be joined between two tables  by transactionId column.  By default, probability is set to 0.99 (99%) to identify the fraudulent transactions. 
+
+To see a step-by-step tutorial that walks you through implementing this solution, see [Detecting anomalies in financial transactions by using AI Platform, Dataflow, and BigQuery](https://cloud.google.com/solutions/detecting-anomalies-in-financial-transactions).
 
 ## Anomaly Detection Reference Architecture Using Cloud AI
 ![ref_arch](diagram/df-cloud-ai-prediction.png)
