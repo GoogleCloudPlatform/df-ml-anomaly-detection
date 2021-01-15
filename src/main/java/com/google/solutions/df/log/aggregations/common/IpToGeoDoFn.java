@@ -23,7 +23,6 @@ import com.maxmind.db.Reader.FileMode;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
 import com.maxmind.geoip2.model.CityResponse;
-import com.maxmind.geoip2.model.CountryResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
@@ -82,13 +81,13 @@ public class IpToGeoDoFn extends DoFn<Row, Row> {
       Double latitude = response.get().getLocation().getLatitude();
       Double longitude = response.get().getLocation().getLongitude();
 
-      
-      c.output(Row.fromRow(defaultRowWithGeo)
-    		  .withFieldValue("geoCountry", countryName)
-    		  .withFieldValue("geoCity", cityName)
-    		  .withFieldValue("latitude", latitude)
-    		  .withFieldValue("longitude", longitude)
-    		  .build());
+      c.output(
+          Row.fromRow(defaultRowWithGeo)
+              .withFieldValue("geoCountry", countryName)
+              .withFieldValue("geoCity", cityName)
+              .withFieldValue("latitude", latitude)
+              .withFieldValue("longitude", longitude)
+              .build());
 
     } else {
       c.output(c.element());
