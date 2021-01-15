@@ -204,4 +204,21 @@ public class Util {
   public static Long currentEndTime() {
     return currentStartTime() + TimeUnit.MILLISECONDS.toMillis(new Random().nextInt(60));
   }
+
+  public static final Schema sensorDataBQSchema =
+      Stream.of(
+              Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
+              Schema.Field.of("lon", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("lat", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("lightId", FieldType.STRING).withNullable(true),
+              Schema.Field.of("city", FieldType.STRING).withNullable(true),
+              Schema.Field.of("signalState", FieldType.INT32).withNullable(true))
+          .collect(toSchema());
+
+  public static final Schema stateDataBQSchema =
+      Stream.of(
+              Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
+              Schema.Field.of("lightId", FieldType.STRING).withNullable(true),
+              Schema.Field.of("connnectState", FieldType.INT32).withNullable(true))
+          .collect(toSchema());
 }
