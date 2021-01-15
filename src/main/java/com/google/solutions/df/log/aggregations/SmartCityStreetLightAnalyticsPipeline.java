@@ -84,7 +84,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
                         String json = c.element();
 
                         JsonObject data = gson.fromJson(json, JsonObject.class);
-
+                        // DC -0 C-1
                         Row row =
                             Row.withSchema(Util.stateDataBQSchema)
                                 .addValues(
