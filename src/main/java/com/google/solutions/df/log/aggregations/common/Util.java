@@ -219,6 +219,6 @@ public class Util {
       Stream.of(
               Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
               Schema.Field.of("lightId", FieldType.STRING).withNullable(true),
-              Schema.Field.of("connnectState", FieldType.INT32).withNullable(true))
+              Schema.Field.of("connectState", FieldType.STRING).withNullable(true))
           .collect(toSchema());
 }

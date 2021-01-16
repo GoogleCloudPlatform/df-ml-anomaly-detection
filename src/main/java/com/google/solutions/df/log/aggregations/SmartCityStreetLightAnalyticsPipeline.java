@@ -82,19 +82,13 @@ public class SmartCityStreetLightAnalyticsPipeline {
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         String json = c.element();
-
                         JsonObject data = gson.fromJson(json, JsonObject.class);
-                        // DC -0 C-1
                         Row row =
                             Row.withSchema(Util.stateDataBQSchema)
                                 .addValues(
                                     data.get("timestamp").toString(),
                                     data.getAsJsonObject("labels").get("device_id").toString(),
-                                    data.getAsJsonObject("jsonPayload")
-                                            .get("eventType")
-                                            .equals("DISCONNECT")
-                                        ? 0
-                                        : 1)
+                                    data.getAsJsonObject("jsonPayload").get("eventType").toString())
                                 .build();
                         LOG.info(row.toString());
                         c.output(row);
