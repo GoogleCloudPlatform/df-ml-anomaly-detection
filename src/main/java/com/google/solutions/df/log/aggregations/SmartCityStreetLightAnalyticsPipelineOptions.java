@@ -16,6 +16,7 @@
 package com.google.solutions.df.log.aggregations;
 
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 
 public interface SmartCityStreetLightAnalyticsPipelineOptions extends DataflowPipelineOptions {
@@ -38,4 +39,16 @@ public interface SmartCityStreetLightAnalyticsPipelineOptions extends DataflowPi
   String getStateTableSpec();
 
   void setStateTableSpec(String value);
+
+  @Description("topic Id to receive image url")
+  @Default.String("projects/next-demo-2020/topics/vision-events")
+  String getImageTopic();
+
+  void setImageTopic(String value);
+
+  @Description("sub Id to receive image url")
+  @Default.String("projects/next-demo-2020/subscriptions/vision-events-sub")
+  String getImageSub();
+
+  void setImageSub(String value);
 }

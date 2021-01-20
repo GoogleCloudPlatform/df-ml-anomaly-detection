@@ -55,7 +55,13 @@ public class Util {
   public static final String DAY_PARTITION = "DAY";
   public static final Integer NUM_OF_SHARDS = 100;
 
-  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+  public enum ImageCategory {
+    fire,
+    smoke,
+    regular
+  }
+
+  public static final DateTimeFormatter TIMESTAMP_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
   private static final String maskString = "255.255.252.0";
   public static final Schema networkLogSchema =
@@ -208,10 +214,12 @@ public class Util {
   public static final Schema sensorDataBQSchema =
       Stream.of(
               Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
-              Schema.Field.of("lon", FieldType.DOUBLE).withNullable(true),
-              Schema.Field.of("lat", FieldType.DOUBLE).withNullable(true),
-              Schema.Field.of("lightId", FieldType.STRING).withNullable(true),
+              Schema.Field.of("co2", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("temp", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("bright", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("deviceId", FieldType.STRING).withNullable(true),
               Schema.Field.of("city", FieldType.STRING).withNullable(true),
+              Schema.Field.of("imageUrl", FieldType.STRING).withNullable(true),
               Schema.Field.of("signalState", FieldType.INT32).withNullable(true))
           .collect(toSchema());
 
@@ -221,4 +229,22 @@ public class Util {
               Schema.Field.of("lightId", FieldType.STRING).withNullable(true),
               Schema.Field.of("connectState", FieldType.STRING).withNullable(true))
           .collect(toSchema());
+
+  public static String getRandomImageName(ImageCategory ic) {
+    String imageName = null;
+    int index = new Random().nextInt(10);
+    switch (ic) {
+      case fire:
+        imageName = String.format("%s%d", "fire_", index);
+        break;
+      case smoke:
+        imageName = String.format("%s%d", "smoke_", index);
+        break;
+      case regular:
+        imageName = String.format("%s%d", "regular_", index);
+        break;
+      default:
+    }
+    return imageName;
+  }
 }

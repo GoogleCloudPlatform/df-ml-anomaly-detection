@@ -1,0 +1,14 @@
+{
+ "deviceId": "{{concat("",integer(0, 999))}}",
+ "bright": {{double(0.0,60.0,"%.2f")}},
+ "temp": {{double(19.00,23.00,"%.2f")}},
+ "humid": {{double(40.0,60.00,"%.2f")}},
+ "pir": {{double(0.0,30.0,"%.2f")}},
+ "co2": {{double(300.0,600.00,"%.2f")}},
+ "city": "TOR",
+ "imageUrl": "",
+ "signalState": {{integer(0,1)}}
+}
+
+gcloud pubsub topics publish events --message  "{\"deviceId\":\"100\",\"bright\":20.0, \"temp\":16.0, \"humid\":35.0,\"pir\":0.9, \"co2\":500,\"city\":\"TOR\",\"imageUrl\":"",\"signalState\":0
+}"
