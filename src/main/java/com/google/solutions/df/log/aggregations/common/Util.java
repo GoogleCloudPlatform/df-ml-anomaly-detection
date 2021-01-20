@@ -216,6 +216,8 @@ public class Util {
               Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
               Schema.Field.of("co2", FieldType.DOUBLE).withNullable(true),
               Schema.Field.of("temp", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("humid", FieldType.DOUBLE).withNullable(true),
+              Schema.Field.of("pir", FieldType.DOUBLE).withNullable(true),
               Schema.Field.of("bright", FieldType.DOUBLE).withNullable(true),
               Schema.Field.of("deviceId", FieldType.STRING).withNullable(true),
               Schema.Field.of("city", FieldType.STRING).withNullable(true),

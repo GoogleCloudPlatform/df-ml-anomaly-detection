@@ -31,21 +31,21 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
 import org.apache.beam.sdk.extensions.ml.CloudVision;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.schemas.transforms.Filter;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.JsonToRow.ParseResult;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.Row;
 import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +84,14 @@ public class SmartCityStreetLightAnalyticsPipeline {
     // read sensor data
     PCollection<String> sensorData =
         p.apply(
-            "ReadSensorData", PubsubIO.readStrings().fromSubscription(options.getSensorDataSub()));
+            "ReadSensorData", PubsubIO.readStrings().fromSubscription(options.getSensorDataSub()))
+            .apply("Print",ParDo.of(new DoFn<String, String>() {
+                @ProcessElement
+                public void processElement(ProcessContext c){
+                  LOG.info("received {}",c.element().toString());
+                  c.output(c.element());
+                }
+    }));
 
     // read state data
     PCollection<String> stateData =
@@ -94,6 +101,22 @@ public class SmartCityStreetLightAnalyticsPipeline {
     ParseResult result =
         sensorData.apply("ConvertToRow", JsonToRow.withExceptionReporting(Util.sensorDataBQSchema));
     PCollection<Row> sensorRow = result.getResults().setRowSchema(Util.sensorDataBQSchema);
+    PCollection<Row> errorRow = result.getFailedToParseLines();
+    errorRow.apply("Print",ParDo.of(new DoFn<Row, Row>() {
+      @ProcessElement
+      public void processElement(ProcessContext c){
+        LOG.info("Error {}",c.element().toString());
+        c.output(c.element());
+      }
+    })).setRowSchema(Util.sensorDataBQSchema);
+    sensorRow.apply("Print",ParDo.of(new DoFn<Row, Row>() {
+      @ProcessElement
+      public void processElement(ProcessContext c){
+        LOG.info("Success {}",c.element().toString());
+        c.output(c.element());
+      }
+    })).setRowSchema(Util.sensorDataBQSchema);
+
 
     PCollection<Row> stateRow =
         stateData
@@ -102,7 +125,6 @@ public class SmartCityStreetLightAnalyticsPipeline {
                 ParDo.of(
                     new DoFn<String, Row>() {
                       Gson gson;
-
                       @Setup
                       public void setup() {
                         gson = new Gson();
@@ -130,62 +152,72 @@ public class SmartCityStreetLightAnalyticsPipeline {
             .setRowSchema(Util.stateDataBQSchema);
 
     // // update with Image Url based on co2 value
-    PCollectionTuple validatedSensor =
-        sensorRow.apply(
-            "Co2Check",
-            ParDo.of(
+    PCollection<Row> validatedSensor =
+        sensorRow
+            .apply(
+                "Co2Check",
+                ParDo.of(
                     new DoFn<Row, Row>() {
                       @ProcessElement
-                      public void processElement(ProcessContext c, MultiOutputReceiver out) {
+                      public void processElement(ProcessContext c) {
                         Row sensorData = c.element();
-                        String bucketName = "gs://smart-city-mqtt-data-generator/images/";
+                        String bucketName = "smart-city-mqtt-data-generator";
+                        String objectName;
                         if (sensorData.getDouble("co2") >= CO2_THRESHOLD) {
                           ImageCategory category =
                               Integer.parseInt(sensorData.getString("deviceId")) % 2 == 0
                                   ? ImageCategory.fire
                                   : ImageCategory.smoke;
-                          GcsPath url =
-                              GcsPath.fromUri(
-                                  String.format(
-                                      "%s%s", bucketName, Util.getRandomImageName(category)));
-                          LOG.info(url.toString());
-                          Row modifiedRow =
-                              Row.fromRow(sensorData)
-                                  .withFieldValue("imageUrl", url.getFileName().toString())
-                                  .build();
-                          out.get(validatedCo2Data).output(modifiedRow);
+                          objectName = String.format("%s/%s","images",Util.getRandomImageName(category));
+
                         } else {
-                          GcsPath url =
-                              GcsPath.fromUri(
-                                  String.format(
-                                      "%s%s",
-                                      bucketName, Util.getRandomImageName(ImageCategory.regular)));
-                          LOG.info(url.toString());
-                          Row modifiedRow =
-                              Row.fromRow(sensorData)
-                                  .withFieldValue("imageUrl", url.getFileName().toString())
-                                  .build();
+                          objectName = String.format("%s/%s","images",Util.getRandomImageName(ImageCategory.regular));
 
-                          out.get(validatedSensorData).output(modifiedRow);
                         }
-                      }
-                    })
-                .withOutputTags(validatedSensorData, TupleTagList.of(validatedCo2Data)));
 
-    PCollection<Row> validatedSensorRow =
-        validatedSensor.get(validatedSensorData).setRowSchema(Util.sensorDataBQSchema);
-    PCollection<Row> validatedCo2Row =
-        validatedSensor.get(validatedCo2Data).setRowSchema(Util.sensorDataBQSchema);
+                        // Row modifiedRow =
+                        //      Row.fromRow(sensorData)
+                        //          .withFieldValue("imageUrl", url.getFileName().toString())
+                        //          .build();
+                        Row modifiedRow = Row.withSchema(Util.sensorDataBQSchema)
+                             .addValues(Util.getTimeStamp(),
+                                sensorData.getDouble("co2"),
+                                sensorData.getDouble("temp"),
+                                sensorData.getDouble("humid"),
+                                sensorData.getDouble("pir"),
+                                sensorData.getDouble("bright"),
+                                sensorData.getString("deviceId"),
+                                sensorData.getString("city"),
+                                GcsPath.fromComponents(bucketName,objectName).toUri().toString(),
+                                sensorData.getInt32("signalState")).build();
+
+                        LOG.info(modifiedRow.toString());
+                        c.output(modifiedRow);
+                      }
+                    }))
+            .setRowSchema(Util.sensorDataBQSchema);
 
     PCollection<String> imageUrl =
-        validatedCo2Row.apply(
-            MapElements.into(TypeDescriptors.strings()).via((Row r) -> r.getString("imageUrl")));
+        validatedSensor
+            .apply(
+                "FilterCo2",
+                Filter.<Row>create().whereFieldName("co2", c -> (double) c > CO2_THRESHOLD))
+            .setRowSchema(Util.sensorDataBQSchema)
+            .apply(
+                MapElements.into(TypeDescriptors.strings())
+                    .via((Row r) -> r.getString("imageUrl")))
+            .setCoder(StringUtf8Coder.of());
+
     PCollection<List<AnnotateImageResponse>> annotationResponses =
-        imageUrl.apply(CloudVision.annotateImagesFromGcsUri(null, features, 1, 1));
+        imageUrl.apply(
+            CloudVision.annotateImagesFromGcsUri(null, features, 1,
+                1));
+
+
     annotationResponses.apply(
         "ProcessLObjectAnnotation",
         ParDo.of(
-            new DoFn<List<AnnotateImageResponse>, Row>() {
+            new DoFn<List<AnnotateImageResponse>, Void>() {
               @ProcessElement
               public void processElement(@Element List<AnnotateImageResponse> e) {
                 e.forEach(
@@ -195,7 +227,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
               }
             }));
 
-    validatedSensorRow.apply(
+    validatedSensor.apply(
         "WriteSensorData",
         BigQueryIO.<Row>write()
             .to(options.getSensorTableSpec())
