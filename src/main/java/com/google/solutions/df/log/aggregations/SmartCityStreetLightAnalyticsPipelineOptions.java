@@ -41,7 +41,7 @@ public interface SmartCityStreetLightAnalyticsPipelineOptions extends DataflowPi
   void setStateTableSpec(String value);
 
   @Description("BQ Annotation Table")
-  @Default.String("next-demo-2020:smart_city.label_annotation")
+  @Default.String("next-demo-2020:smart_city.image_annotation")
   String getAnnotationTableSpec();
 
   void setAnnotationTableSpec(String value);

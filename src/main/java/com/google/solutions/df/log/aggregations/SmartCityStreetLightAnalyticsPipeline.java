@@ -205,6 +205,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         List<AnnotateImageRequest> requestList = new ArrayList<>();
+                        List<Row> annotations = new ArrayList<>();
                         Row row = c.element();
                         String imageUri = row.getString("imageUrl");
                         String deviceId = row.getString("deviceId");
@@ -227,19 +228,26 @@ public class SmartCityStreetLightAnalyticsPipeline {
                                       .getLabelAnnotationsList()
                                       .forEach(
                                           annotation -> {
-                                            Row annotationResponse = Row.withSchema(Util.annotationDataBQSchema)
-                                                .addValues(
-                                                    Util.getTimeStamp(),
-                                                    image.getSource().getGcsImageUri(),
-                                                    deviceId,
-                                                    annotation.getMid(),
+
+                                            annotations.add(Row.withSchema(Util.annotationSchema)
+                                                .addValues(annotation.getMid(),
                                                     annotation.getDescription(),
                                                     annotation.getScore(),
-                                                    annotation.getTopicality())
-                                                .build();
-                                            LOG.info(annotationResponse.toString());
-                                            c.output(annotationResponse);
+                                                    annotation.getTopicality()).build());
+
                                           });
+
+
+                                  Row annotationResponse = Row.withSchema(Util.annotationDataBQSchema)
+                                      .addValues(
+                                          Util.getTimeStamp(),
+                                          image.getSource().getGcsImageUri(),
+                                          deviceId,
+                                          annotations
+                                          )
+                                      .build();
+                                  LOG.info(annotationResponse.toString());
+                                  c.output(annotationResponse);
                                 });
                       }
                     })).setRowSchema(Util.annotationDataBQSchema);
