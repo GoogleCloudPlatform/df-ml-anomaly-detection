@@ -40,15 +40,9 @@ public interface SmartCityStreetLightAnalyticsPipelineOptions extends DataflowPi
 
   void setStateTableSpec(String value);
 
-  @Description("topic Id to receive image url")
-  @Default.String("projects/next-demo-2020/topics/vision-events")
-  String getImageTopic();
+  @Description("BQ Annotation Table")
+  @Default.String("next-demo-2020:smart_city.label_annotation")
+  String getAnnotationTableSpec();
 
-  void setImageTopic(String value);
-
-  @Description("sub Id to receive image url")
-  @Default.String("projects/next-demo-2020/subscriptions/vision-events-sub")
-  String getImageSub();
-
-  void setImageSub(String value);
+  void setAnnotationTableSpec(String value);
 }

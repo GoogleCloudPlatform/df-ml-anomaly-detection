@@ -17,23 +17,27 @@ package com.google.solutions.df.log.aggregations;
 
 import com.google.api.services.bigquery.model.Clustering;
 import com.google.api.services.bigquery.model.TimePartitioning;
-import com.google.cloud.vision.v1.AnnotateImageResponse;
+import com.google.cloud.vision.v1.AnnotateImageRequest;
+import com.google.cloud.vision.v1.BatchAnnotateImagesResponse;
 import com.google.cloud.vision.v1.Feature;
+import com.google.cloud.vision.v1.Image;
+import com.google.cloud.vision.v1.ImageAnnotatorClient;
+import com.google.cloud.vision.v1.ImageSource;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.solutions.df.log.aggregations.common.Util;
 import com.google.solutions.df.log.aggregations.common.Util.ImageCategory;
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.util.gcsfs.GcsPath;
-import org.apache.beam.sdk.extensions.ml.CloudVision;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -41,12 +45,9 @@ import org.apache.beam.sdk.schemas.transforms.Filter;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.JsonToRow;
 import org.apache.beam.sdk.transforms.JsonToRow.ParseResult;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TupleTag;
-import org.apache.beam.sdk.values.TypeDescriptors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,12 +63,12 @@ public class SmartCityStreetLightAnalyticsPipeline {
   static final Clustering clusteringState =
       new Clustering().setFields(ImmutableList.of("connectState"));
   static final Double CO2_THRESHOLD = 500.00;
-  static final TupleTag<Row> validatedSensorData = new TupleTag<Row>() {};
-  static final TupleTag<Row> validatedCo2Data = new TupleTag<Row>() {};
+  static final String BUCKET_NAME = "smart-city-mqtt-data-generator";
+
   static final List<Feature> features =
       Collections.singletonList(Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build());
 
-  static DateTimeFormatter bqTimstamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+  static DateTimeFormatter bqTimestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
   public static void main(String args[]) {
 
@@ -84,14 +85,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
     // read sensor data
     PCollection<String> sensorData =
         p.apply(
-            "ReadSensorData", PubsubIO.readStrings().fromSubscription(options.getSensorDataSub()))
-            .apply("Print",ParDo.of(new DoFn<String, String>() {
-                @ProcessElement
-                public void processElement(ProcessContext c){
-                  LOG.info("received {}",c.element().toString());
-                  c.output(c.element());
-                }
-    }));
+            "ReadSensorData", PubsubIO.readStrings().fromSubscription(options.getSensorDataSub()));
 
     // read state data
     PCollection<String> stateData =
@@ -101,23 +95,6 @@ public class SmartCityStreetLightAnalyticsPipeline {
     ParseResult result =
         sensorData.apply("ConvertToRow", JsonToRow.withExceptionReporting(Util.sensorDataBQSchema));
     PCollection<Row> sensorRow = result.getResults().setRowSchema(Util.sensorDataBQSchema);
-    PCollection<Row> errorRow = result.getFailedToParseLines();
-    errorRow.apply("Print",ParDo.of(new DoFn<Row, Row>() {
-      @ProcessElement
-      public void processElement(ProcessContext c){
-        LOG.info("Error {}",c.element().toString());
-        c.output(c.element());
-      }
-    })).setRowSchema(Util.sensorDataBQSchema);
-    sensorRow.apply("Print",ParDo.of(new DoFn<Row, Row>() {
-      @ProcessElement
-      public void processElement(ProcessContext c){
-        LOG.info("Success {}",c.element().toString());
-        c.output(c.element());
-      }
-    })).setRowSchema(Util.sensorDataBQSchema);
-
-
     PCollection<Row> stateRow =
         stateData
             .apply(
@@ -125,6 +102,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
                 ParDo.of(
                     new DoFn<String, Row>() {
                       Gson gson;
+
                       @Setup
                       public void setup() {
                         gson = new Gson();
@@ -137,7 +115,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
                         ZonedDateTime dateTime =
                             ZonedDateTime.parse(data.get("timestamp").getAsString());
                         String timeStamp =
-                            dateTime.withZoneSameInstant(ZoneId.of("UTC")).format(bqTimstamp);
+                            dateTime.withZoneSameInstant(ZoneId.of("UTC")).format(bqTimestamp);
                         Row row =
                             Row.withSchema(Util.stateDataBQSchema)
                                 .addValues(
@@ -161,71 +139,110 @@ public class SmartCityStreetLightAnalyticsPipeline {
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         Row sensorData = c.element();
-                        String bucketName = "smart-city-mqtt-data-generator";
                         String objectName;
                         if (sensorData.getDouble("co2") >= CO2_THRESHOLD) {
                           ImageCategory category =
                               Integer.parseInt(sensorData.getString("deviceId")) % 2 == 0
                                   ? ImageCategory.fire
                                   : ImageCategory.smoke;
-                          objectName = String.format("%s/%s","images",Util.getRandomImageName(category));
+                          objectName =
+                              String.format("%s/%s", "images", Util.getRandomImageName(category));
 
                         } else {
-                          objectName = String.format("%s/%s","images",Util.getRandomImageName(ImageCategory.regular));
-
+                          objectName =
+                              String.format(
+                                  "%s/%s",
+                                  "images", Util.getRandomImageName(ImageCategory.regular));
                         }
 
                         // Row modifiedRow =
                         //      Row.fromRow(sensorData)
                         //          .withFieldValue("imageUrl", url.getFileName().toString())
                         //          .build();
-                        Row modifiedRow = Row.withSchema(Util.sensorDataBQSchema)
-                             .addValues(Util.getTimeStamp(),
-                                sensorData.getDouble("co2"),
-                                sensorData.getDouble("temp"),
-                                sensorData.getDouble("humid"),
-                                sensorData.getDouble("pir"),
-                                sensorData.getDouble("bright"),
-                                sensorData.getString("deviceId"),
-                                sensorData.getString("city"),
-                                GcsPath.fromComponents(bucketName,objectName).toUri().toString(),
-                                sensorData.getInt32("signalState")).build();
-
-                        LOG.info(modifiedRow.toString());
+                        Row modifiedRow =
+                            Row.withSchema(Util.sensorDataBQSchema)
+                                .addValues(
+                                    Util.getTimeStamp(),
+                                    sensorData.getDouble("co2"),
+                                    sensorData.getDouble("temp"),
+                                    sensorData.getDouble("humid"),
+                                    sensorData.getDouble("pir"),
+                                    sensorData.getDouble("bright"),
+                                    sensorData.getString("deviceId"),
+                                    sensorData.getString("city"),
+                                    GcsPath.fromComponents(BUCKET_NAME, objectName)
+                                        .toUri()
+                                        .toString(),
+                                    sensorData.getInt32("signalState"))
+                                .build();
+                        LOG.debug(modifiedRow.toString());
                         c.output(modifiedRow);
                       }
                     }))
             .setRowSchema(Util.sensorDataBQSchema);
 
-    PCollection<String> imageUrl =
+    PCollection<Row> annotationRow =
         validatedSensor
             .apply(
-                "FilterCo2",
-                Filter.<Row>create().whereFieldName("co2", c -> (double) c > CO2_THRESHOLD))
+                "FilterCo2Threshold",
+                Filter.<Row>create().whereFieldName("co2", c -> (double) c >= CO2_THRESHOLD))
             .setRowSchema(Util.sensorDataBQSchema)
             .apply(
-                MapElements.into(TypeDescriptors.strings())
-                    .via((Row r) -> r.getString("imageUrl")))
-            .setCoder(StringUtf8Coder.of());
+                "LabelAnnotation",
+                ParDo.of(
+                    new DoFn<Row, Row>() {
+                      private transient ImageAnnotatorClient imageAnnotatorClient;
 
-    PCollection<List<AnnotateImageResponse>> annotationResponses =
-        imageUrl.apply(
-            CloudVision.annotateImagesFromGcsUri(null, features, 1,
-                1));
+                      @Setup
+                      public void setup() throws IOException {
+                        imageAnnotatorClient = ImageAnnotatorClient.create();
+                      }
 
-
-    annotationResponses.apply(
-        "ProcessLObjectAnnotation",
-        ParDo.of(
-            new DoFn<List<AnnotateImageResponse>, Void>() {
-              @ProcessElement
-              public void processElement(@Element List<AnnotateImageResponse> e) {
-                e.forEach(
-                    annotation -> {
-                      LOG.info(annotation.toString());
-                    });
-              }
-            }));
+                      @Teardown
+                      public void teardown() {
+                        imageAnnotatorClient.close();
+                      }
+                      @ProcessElement
+                      public void processElement(ProcessContext c) {
+                        List<AnnotateImageRequest> requestList = new ArrayList<>();
+                        Row row = c.element();
+                        String imageUri = row.getString("imageUrl");
+                        String deviceId = row.getString("deviceId");
+                        ImageSource imageSource =
+                            ImageSource.newBuilder().setGcsImageUri(imageUri).build();
+                        Image image = Image.newBuilder().setSource(imageSource).build();
+                        AnnotateImageRequest request =
+                            AnnotateImageRequest.newBuilder()
+                                .setImage(image)
+                                .addAllFeatures(features)
+                                .build();
+                        requestList.add(request);
+                        BatchAnnotateImagesResponse batchAnnotateImagesResponse =
+                            imageAnnotatorClient.batchAnnotateImages(requestList);
+                        batchAnnotateImagesResponse
+                            .getResponsesList()
+                            .forEach(
+                                response -> {
+                                  response
+                                      .getLabelAnnotationsList()
+                                      .forEach(
+                                          annotation -> {
+                                            Row annotationResponse = Row.withSchema(Util.annotationDataBQSchema)
+                                                .addValues(
+                                                    Util.getTimeStamp(),
+                                                    image.getSource().getGcsImageUri(),
+                                                    deviceId,
+                                                    annotation.getMid(),
+                                                    annotation.getDescription(),
+                                                    annotation.getScore(),
+                                                    annotation.getTopicality())
+                                                .build();
+                                            LOG.info(annotationResponse.toString());
+                                            c.output(annotationResponse);
+                                          });
+                                });
+                      }
+                    })).setRowSchema(Util.annotationDataBQSchema);
 
     validatedSensor.apply(
         "WriteSensorData",
@@ -249,6 +266,16 @@ public class SmartCityStreetLightAnalyticsPipeline {
             .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
             .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
 
+    annotationRow.apply(
+        "WriteAnnotationData",
+        BigQueryIO.<Row>write()
+            .to(options.getAnnotationTableSpec())
+            .useBeamSchema()
+            .withTimePartitioning(timePartitioning)
+            .withClustering(clustering)
+            .ignoreInsertIds()
+            .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+            .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
     return p.run();
   }
 }
