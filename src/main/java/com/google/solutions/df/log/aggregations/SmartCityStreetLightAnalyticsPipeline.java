@@ -202,6 +202,7 @@ public class SmartCityStreetLightAnalyticsPipeline {
                       public void teardown() {
                         imageAnnotatorClient.close();
                       }
+
                       @ProcessElement
                       public void processElement(ProcessContext c) {
                         List<AnnotateImageRequest> requestList = new ArrayList<>();
@@ -228,29 +229,30 @@ public class SmartCityStreetLightAnalyticsPipeline {
                                       .getLabelAnnotationsList()
                                       .forEach(
                                           annotation -> {
-
-                                            annotations.add(Row.withSchema(Util.annotationSchema)
-                                                .addValues(annotation.getMid(),
-                                                    annotation.getDescription(),
-                                                    annotation.getScore(),
-                                                    annotation.getTopicality()).build());
-
+                                            annotations.add(
+                                                Row.withSchema(Util.annotationSchema)
+                                                    .addValues(
+                                                        annotation.getMid(),
+                                                        annotation.getDescription(),
+                                                        annotation.getScore(),
+                                                        annotation.getTopicality())
+                                                    .build());
                                           });
 
-
-                                  Row annotationResponse = Row.withSchema(Util.annotationDataBQSchema)
-                                      .addValues(
-                                          Util.getTimeStamp(),
-                                          image.getSource().getGcsImageUri(),
-                                          deviceId,
-                                          annotations
-                                          )
-                                      .build();
+                                  Row annotationResponse =
+                                      Row.withSchema(Util.annotationDataBQSchema)
+                                          .addValues(
+                                              Util.getTimeStamp(),
+                                              image.getSource().getGcsImageUri(),
+                                              deviceId,
+                                              annotations)
+                                          .build();
                                   LOG.info(annotationResponse.toString());
                                   c.output(annotationResponse);
                                 });
                       }
-                    })).setRowSchema(Util.annotationDataBQSchema);
+                    }))
+            .setRowSchema(Util.annotationDataBQSchema);
 
     validatedSensor.apply(
         "WriteSensorData",

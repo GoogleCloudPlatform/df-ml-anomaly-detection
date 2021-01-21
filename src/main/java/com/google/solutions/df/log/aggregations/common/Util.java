@@ -225,20 +225,19 @@ public class Util {
               Schema.Field.of("signalState", FieldType.INT32).withNullable(true))
           .collect(toSchema());
 
-  public static final Schema annotationSchema =  Stream.of(
-      Schema.Field.of("mid", FieldType.STRING).withNullable(true),
-      Schema.Field.of("description", FieldType.STRING).withNullable(true),
-      Schema.Field.of("score", FieldType.FLOAT).withNullable(true),
-      Schema.Field.of("topicality", FieldType.FLOAT).withNullable(true))
-      .collect(toSchema());
+  public static final Schema annotationSchema =
+      Stream.of(
+              Schema.Field.of("mid", FieldType.STRING).withNullable(true),
+              Schema.Field.of("description", FieldType.STRING).withNullable(true),
+              Schema.Field.of("score", FieldType.FLOAT).withNullable(true),
+              Schema.Field.of("topicality", FieldType.FLOAT).withNullable(true))
+          .collect(toSchema());
   public static final Schema annotationDataBQSchema =
       Stream.of(
               Schema.Field.of("timeStamp", FieldType.STRING).withNullable(true),
               Schema.Field.of("imageUri", FieldType.STRING).withNullable(true),
               Schema.Field.of("deviceId", FieldType.STRING).withNullable(true),
-             Schema.Field.of(
-              "label_annotation", FieldType.array(FieldType.row(annotationSchema))))
-
+              Schema.Field.of("label_annotation", FieldType.array(FieldType.row(annotationSchema))))
           .collect(toSchema());
 
   public static final Schema stateDataBQSchema =
