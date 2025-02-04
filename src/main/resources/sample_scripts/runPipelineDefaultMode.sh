@@ -16,13 +16,15 @@ set -x
 echo "please to use glocud make sure you completed authentication"
 echo "gcloud config set project templates-user"
 echo "gcloud auth application-default login"
-PROJECT_ID=custom-network-test
-# publicly hosted image
-DYNAMIC_TEMPLATE_BUCKET_SPEC=gs://dynamic-template-test/dynamic_template_secure_log_aggr_template.json
+PROJECT_ID='REPLACE_WITH_YOUR_PROJECT_ID'
+TEMPLATE_BUCKET='REPLACE_WITH_YOUR_BUCKET'
+DF_TEMP_BUCKET='REPLACE_WITH_YOUR_BUCKET'
+
+DYNAMIC_TEMPLATE_BUCKET_SPEC=gs://${TEMPLATE_BUCKET}/dynamic_template_secure_log_aggr_template.json
 JOB_NAME="pipeline-`date +%Y%m%d-%H%M%S-%N`"
 echo JOB_NAME=$JOB_NAME
 # log location
-GCS_STAGING_LOCATION=gs://dynamic-template-test/log
+GCS_STAGING_LOCATION=gs://${DF_TEMP_BUCKET}/log
 PARAMETERS_CONFIG='{  
    "jobName":"'$JOB_NAME'",
    "parameters":{  
@@ -31,21 +33,21 @@ PARAMETERS_CONFIG='{
       "workerMachineType": "n1-standard-8",
       "numWorkers":"50",
       "maxNumWorkers":"50",
-      "subscriberId":"projects/custom-network-test/subscriptions/log-sub",
+      "subscriberId":"projects/${PROJECT_ID}/subscriptions/log-sub",
       "network":"custom-network-1",
-      "tableSpec":"custom-network-test:network_logs.cluster_model_data",
+      "tableSpec":"${PROJECT_ID}:network_logs.cluster_model_data",
       "subnetwork":"regions/us-central1/subnetworks/custom-network-1",
       "region":"us-central-1",
       "batchFrequency":"5",
-      "customGcsTempLocation":"gs://df-temp-loc/file_load",
+      "customGcsTempLocation":"gs://${DF_TEMP_BUCKET}/file_load",
       "usePublicIps":"false",
-      "clusterQuery":"gs://dynamic-template-test/normalized_cluster_data.sql",
+      "clusterQuery":"gs://${TEMPLATE_BUCKET}/normalized_cluster_data.sql",
       "outlierTableSpec":"custom-network-test:network_logs.outlier_data",
       "windowInterval":"2",
-      "tempLocation":"gs://df-temp-loc/temp",
+      "tempLocation":"gs://${DF_TEMP_BUCKET}/temp",
       "writeMethod":"FILE_LOADS",
       "diskSizeGb":"500",
-      "workerDiskType":"compute.googleapis.com/projects/custom-network-test/zones/us-central1-b/diskTypes/pd-ssd" 
+      "workerDiskType":"compute.googleapis.com/projects/${PROJECT_ID}/zones/us-central1-b/diskTypes/pd-ssd"
  	}
 }'
 API_ROOT_URL="https://dataflow.googleapis.com"
