@@ -15,7 +15,7 @@
  */
 buildscript {
     ext {
-        dataflowBeamVersion = '2.23.0'
+        dataflowBeamVersion = '2.70.0'
        
         
     }
