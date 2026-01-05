@@ -100,7 +100,7 @@ dependencies {
     compile name: 'json-data-generator-1.10-SNAPSHOT-standalone'
     compile 'com.maxmind.geoip2:geoip2:2.14.0'
     compile group: 'com.google.api-client', name: 'google-api-client', version: '1.30.9'
-    compile group: 'com.google.apis', name: 'google-api-services-discovery', version: 'v1-rev134-1.25.0'
+    compile group: 'com.google.apis', name: 'google-api-services-discovery', version: 'v1-rev20200806-2.0.0'
 	testCompile group: 'org.apache.beam', name: 'beam-runners-direct-java', version: dataflowBeamVersion
 	testCompile group: 'org.slf4j', name: 'slf4j-jdk14', version: '1.7.5'
     testCompile group: 'org.hamcrest', name: 'hamcrest-core', version: '1.3'
