@@ -12,14 +12,16 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 steps:
- - name: gcr.io/cloud-builders/gsutil
-   args: ['mb', '-c', 'standard', '-l','us-central1', 'gs://${_DATA_STORAGE_BUCKET}']
+ - name: gcr.io/cloud-builders/gcloud
+   entrypoint: gcloud
+   args: ['storage', 'buckets', 'create', '--default-storage-class', 'standard', '--location', 'us-central1', 'gs://${_DATA_STORAGE_BUCKET}']
  - name: gcr.io/cloud-builders/gcloud
    args: ['pubsub', 'topics', 'create', '${_TOPIC_ID}']
  - name: gcr.io/cloud-builders/gcloud
    args: ['pubsub', 'subscriptions', 'create', '${_SUBSCRIPTION_ID}', '--topic', '${_TOPIC_ID}']
- - name: gcr.io/cloud-builders/gsutil
-   args: ['-m', 'cp', 'gs://wesp-flow-logs/*.*', '.']
+ - name: gcr.io/cloud-builders/gcloud
+   entrypoint: gcloud
+   args: ['storage', 'cp', 'gs://wesp-flow-logs/*.*', '.']
  - name: gcr.io/cloud-solutions-images/bq
    args: ['mk', '-d', '--description', 'Network Flow Log Dataset', '--location=US', '${_DATASET}']
  - name: gcr.io/cloud-solutions-images/bq
@@ -33,9 +35,11 @@ steps:
  - name: 'gcr.io/cloud-builders/docker'
    entrypoint: 'bash'
    args: ['-c', 'echo "SELECT * FROM \`${PROJECT_ID}.${_DATASET}.normalized_centroid_data\`" > normalized_cluster_data.sql']
- - name: gcr.io/cloud-builders/gsutil
-   args: ['cp', 'normalized_cluster_data.sql', 'gs://${_DATA_STORAGE_BUCKET}/']
- - name: gcr.io/cloud-builders/gsutil
-   args: ['cp', 'gs://df-ml-anomaly-detection-mock-data/*', 'gs://${_DATA_STORAGE_BUCKET}/']
+ - name: gcr.io/cloud-builders/gcloud
+   entrypoint: gcloud
+   args: ['storage', 'cp', 'normalized_cluster_data.sql', 'gs://${_DATA_STORAGE_BUCKET}/']
+ - name: gcr.io/cloud-builders/gcloud
+   entrypoint: gcloud
+   args: ['storage', 'cp', 'gs://df-ml-anomaly-detection-mock-data/*', 'gs://${_DATA_STORAGE_BUCKET}/']
  - name: 'ubuntu'
    args: ['bash', '-c','apt-get -q update && apt-get install -qqy curl; sh df-template.sh ${PROJECT_ID} ${_SUBSCRIPTION_ID} ${_DATASET} ${_DATA_STORAGE_BUCKET} ${_API_KEY}']
