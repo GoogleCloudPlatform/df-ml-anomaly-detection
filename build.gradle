@@ -92,7 +92,7 @@ dependencies {
 	compile group: 'org.apache.beam', name: 'beam-sdks-java-extensions-zetasketch', version: dataflowBeamVersion
 	compile "com.google.auto.value:auto-value-annotations:1.6.2"
     annotationProcessor "com.google.auto.value:auto-value:1.6.2"
-	compile 'com.google.cloud:google-cloud-storage:1.98.0'
+	compile 'com.google.cloud:google-cloud-storage:1.118.1'
 	compile group: 'org.apache.commons', name: 'commons-math3', version: '3.0'
 	compile group: 'commons-validator', name: 'commons-validator', version: '1.4.0'
 	compile 'commons-net:commons-net:3.6'
